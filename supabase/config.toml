@@ -1,0 +1,13 @@
+project_id = "studio-01"
+
+[api]
+enabled = true
+
+[db]
+major_version = 15
+
+[storage]
+enabled = true
+
+[auth]
+enabled = true
