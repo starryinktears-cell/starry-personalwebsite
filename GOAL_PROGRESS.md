@@ -1,6 +1,6 @@
 # Goal Progress
 
-## 当前状态：M4 已完成，等待最终提交审计
+## 当前状态：M4 已完成，最终审计通过
 
 本次重设计在 `redesign/cinematic` 分支完成，严格按 `docs/REDESIGN_SPEC.md` 的 M1 → M4 顺序执行。现有 Supabase、Node.js API、认证、后台路由、账号隔离、上传状态和数据归属逻辑保留；本分支不推送主分支、不触发 Production 部署。
 
@@ -70,7 +70,7 @@
 
 以下提交和标签在最终工作树审计后创建，供分支回溯：
 
-- M1：`m1-done`（设计基础、素材、SEO、数据和可访问性）
-- M2：`m2-done`（动效骨架与延迟加载运行时）
-- M3：`m3-done`（首页高光、Preloader、Footer 和路由转场）
-- M4：`m4-done`（详情与其余公开页面、双语移动入口、验证协议）
+- M1：`5668b7f` / `m1-done`（设计基础、素材、SEO、数据和可访问性）
+- M2：`c08a353` / `m2-done`（动效骨架与延迟加载运行时）
+- M3：`f1bb3ab` / `m3-done`（首页高光、Preloader、Footer 和路由转场）
+- M4：`fbd4d11` / `m4-done`（详情与其余公开页面、双语移动入口、验证协议）
