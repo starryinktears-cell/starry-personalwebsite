@@ -32,6 +32,12 @@ export type Project = {
   client?: string
   cover: string
   coverAlt: string
+  coverLqip?: string
+  coverSrcSet?: string
+  coords?: string
+  camera?: string
+  format?: string
+  credits?: string
   assets: Asset[]
   updatedAt: string
 }

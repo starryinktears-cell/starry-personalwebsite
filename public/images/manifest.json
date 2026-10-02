@@ -1,0 +1,170 @@
+{
+  "hero": {
+    "src": "/images/hero.webp",
+    "srcSet": "/images/hero-900.webp 900w, /images/hero.webp 1800w",
+    "lqip": "/images/hero-lqip.jpg",
+    "width": 2200,
+    "height": 1461
+  },
+  "about": {
+    "src": "/images/about.webp",
+    "srcSet": "/images/about-900.webp 900w, /images/about.webp 1800w",
+    "lqip": "/images/about-lqip.jpg",
+    "width": 1800,
+    "height": 2699
+  },
+  "serviceA": {
+    "src": "/images/serviceA.webp",
+    "srcSet": "/images/serviceA-900.webp 900w, /images/serviceA.webp 1800w",
+    "lqip": "/images/serviceA-lqip.jpg",
+    "width": 1800,
+    "height": 1200
+  },
+  "serviceB": {
+    "src": "/images/serviceB.webp",
+    "srcSet": "/images/serviceB-900.webp 900w, /images/serviceB.webp 1800w",
+    "lqip": "/images/serviceB-lqip.jpg",
+    "width": 1800,
+    "height": 1200
+  },
+  "contact": {
+    "src": "/images/contact.webp",
+    "srcSet": "/images/contact-900.webp 900w, /images/contact.webp 1800w",
+    "lqip": "/images/contact-lqip.jpg",
+    "width": 1800,
+    "height": 1200
+  },
+  "notfound": {
+    "src": "/images/notfound.webp",
+    "srcSet": "/images/notfound-900.webp 900w, /images/notfound.webp 1800w",
+    "lqip": "/images/notfound-lqip.jpg",
+    "width": 1800,
+    "height": 1202
+  },
+  "mountain": {
+    "src": "/images/mountain.webp",
+    "srcSet": "/images/mountain-900.webp 900w, /images/mountain.webp 1800w",
+    "lqip": "/images/mountain-lqip.jpg",
+    "width": 1800,
+    "height": 1200
+  },
+  "coastline": {
+    "src": "/images/coastline.webp",
+    "srcSet": "/images/coastline-900.webp 900w, /images/coastline.webp 1800w",
+    "lqip": "/images/coastline-lqip.jpg",
+    "width": 1800,
+    "height": 1200
+  },
+  "portrait": {
+    "src": "/images/portrait.webp",
+    "srcSet": "/images/portrait-900.webp 900w, /images/portrait.webp 1800w",
+    "lqip": "/images/portrait-lqip.jpg",
+    "width": 1800,
+    "height": 2700
+  },
+  "interior": {
+    "src": "/images/interior.webp",
+    "srcSet": "/images/interior-900.webp 900w, /images/interior.webp 1800w",
+    "lqip": "/images/interior-lqip.jpg",
+    "width": 1800,
+    "height": 2700
+  },
+  "camera": {
+    "src": "/images/camera.webp",
+    "srcSet": "/images/camera-900.webp 900w, /images/camera.webp 1800w",
+    "lqip": "/images/camera-lqip.jpg",
+    "width": 1800,
+    "height": 2251
+  },
+  "olive": {
+    "src": "/images/olive.webp",
+    "srcSet": "/images/olive-900.webp 900w, /images/olive.webp 1800w",
+    "lqip": "/images/olive-lqip.jpg",
+    "width": 1800,
+    "height": 2700
+  },
+  "shore": {
+    "src": "/images/shore.webp",
+    "srcSet": "/images/shore-900.webp 900w, /images/shore.webp 1800w",
+    "lqip": "/images/shore-lqip.jpg",
+    "width": 1800,
+    "height": 2700
+  },
+  "forest": {
+    "src": "/images/forest.webp",
+    "srcSet": "/images/forest-900.webp 900w, /images/forest.webp 1800w",
+    "lqip": "/images/forest-lqip.jpg",
+    "width": 1800,
+    "height": 1199
+  },
+  "dusk": {
+    "src": "/images/dusk.webp",
+    "srcSet": "/images/dusk-900.webp 900w, /images/dusk.webp 1800w",
+    "lqip": "/images/dusk-lqip.jpg",
+    "width": 1800,
+    "height": 1200
+  },
+  "mountainLake": {
+    "src": "/images/mountainLake.webp",
+    "srcSet": "/images/mountainLake-900.webp 900w, /images/mountainLake.webp 1800w",
+    "lqip": "/images/mountainLake-lqip.jpg",
+    "width": 1800,
+    "height": 1200
+  },
+  "field": {
+    "src": "/images/field.webp",
+    "srcSet": "/images/field-900.webp 900w, /images/field.webp 1800w",
+    "lqip": "/images/field-lqip.jpg",
+    "width": 1800,
+    "height": 1200
+  },
+  "meadow": {
+    "src": "/images/meadow.webp",
+    "srcSet": "/images/meadow-900.webp 900w, /images/meadow.webp 1800w",
+    "lqip": "/images/meadow-lqip.jpg",
+    "width": 1800,
+    "height": 2699
+  },
+  "desert": {
+    "src": "/images/desert.webp",
+    "srcSet": "/images/desert-900.webp 900w, /images/desert.webp 1800w",
+    "lqip": "/images/desert-lqip.jpg",
+    "width": 1800,
+    "height": 2700
+  },
+  "window": {
+    "src": "/images/window.webp",
+    "srcSet": "/images/window-900.webp 900w, /images/window.webp 1800w",
+    "lqip": "/images/window-lqip.jpg",
+    "width": 1800,
+    "height": 1201
+  },
+  "road": {
+    "src": "/images/road.webp",
+    "srcSet": "/images/road-900.webp 900w, /images/road.webp 1800w",
+    "lqip": "/images/road-lqip.jpg",
+    "width": 1800,
+    "height": 1350
+  },
+  "hands": {
+    "src": "/images/hands.webp",
+    "srcSet": "/images/hands-900.webp 900w, /images/hands.webp 1800w",
+    "lqip": "/images/hands-lqip.jpg",
+    "width": 1800,
+    "height": 2700
+  },
+  "studio": {
+    "src": "/images/studio.webp",
+    "srcSet": "/images/studio-900.webp 900w, /images/studio.webp 1800w",
+    "lqip": "/images/studio-lqip.jpg",
+    "width": 1800,
+    "height": 1202
+  },
+  "wave": {
+    "src": "/images/wave.webp",
+    "srcSet": "/images/wave-900.webp 900w, /images/wave.webp 1800w",
+    "lqip": "/images/wave-lqip.jpg",
+    "width": 1800,
+    "height": 1197
+  }
+}
