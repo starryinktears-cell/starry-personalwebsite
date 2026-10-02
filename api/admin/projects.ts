@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { z } from 'zod'
-import { authenticateRequest, json } from '../_lib/supabase'
+import { authenticateRequest, json } from '../_lib/supabase.js'
 
 const bodySchema = z.object({ slug: z.string().min(1), title: z.string().min(1), summary: z.string().optional(), body: z.string().optional(), year: z.number().int().optional(), category: z.string().min(1), tags: z.array(z.string()).optional(), status: z.enum(['draft', 'published', 'archived']).optional(), featured: z.boolean().optional(), cover_asset_id: z.string().uuid().nullable().optional() })
 

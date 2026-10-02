@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { z } from 'zod'
-import { getServerSupabase, json } from '../_lib/supabase'
+import { getServerSupabase, json } from '../_lib/supabase.js'
 
 const schema = z.object({ path: z.string().regex(/^[-a-zA-Z0-9_/.]+$/).max(240), contentType: z.string().max(120) })
 

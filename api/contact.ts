@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { z } from 'zod'
-import { getServerSupabase, json } from './_lib/supabase'
+import { getServerSupabase, json } from './_lib/supabase.js'
 
 const inquirySchema = z.object({ name: z.string().min(1).max(120), email: z.string().email(), projectType: z.string().max(80).optional(), message: z.string().min(1).max(5000), consent: z.literal(true) })
 

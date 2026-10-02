@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { authenticateRequest, json } from '../../_lib/supabase'
+import { authenticateRequest, json } from '../../_lib/supabase.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const auth = await authenticateRequest(req)
@@ -22,3 +22,4 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   return json(res, 405, { error: 'method_not_allowed' })
 }
+
