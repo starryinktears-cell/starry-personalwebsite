@@ -52,7 +52,7 @@ npm run verify
 
 `npm run verify` 会检查 12 条公开路由在 1440 / 1024 / 390 三种视口下的控制台错误、横向溢出、图片 Alt/尺寸、唯一标题和减少动态效果模式，并把全页截图写入 `.goal/screenshots/`。移动端 Lighthouse 首页和项目详情页的结果记录在 `GOAL_PROGRESS.md`，目标为 Performance ≥ 90、Accessibility ≥ 95、Best Practices ≥ 95、SEO ≥ 95。
 
-另有 `npm run api:dev` 可在安装并登录 Vercel CLI 后本地模拟 `/api` Functions。`/api/health`、`/api/contact`、`/api/projects`、`/api/admin/projects`、`/api/admin/inquiries`、`/api/admin/settings`、`/api/upload/sign` 和 `/api/upload/complete` 已提供 Node.js API；上传签名、私有线索和项目查询在服务端读取 Supabase 服务密钥，并通过 Supabase Auth Bearer 会话和 owner_id 校验归属。
+另有 `npm run api:dev` 可在安装并登录 Vercel CLI 后本地模拟 `/api` Functions。`/api/health`、`/api/contact`、`/api/projects`、`/api/admin/projects`、`/api/admin/inquiries`、`/api/admin/settings`、`/api/admin/account`、`/api/upload/sign` 和 `/api/upload/complete` 已提供 Node.js API；上传签名会同时创建受 owner_id 约束的 `assets` / `upload_tasks` 记录，私有线索、项目、设置和账号删除在服务端读取 Supabase 服务密钥，并通过 Supabase Auth Bearer 会话和 owner_id 校验归属。
 
 ## Vercel / GitHub
 
@@ -60,6 +60,6 @@ npm run verify
 
 ## 当前边界
 
-- 媒体处理适配层和 UI 状态已覆盖上传中、处理中、可用、失败/重试所需状态；真实缩略图、视频转码和海报帧需要接入异步媒体处理服务后写回 `assets` / `upload_tasks`。
+- 媒体上传会写入私有 Storage，并通过 Tus 分块上传、`retryDelays` 与 fingerprint 恢复断点；`upload_tasks` 记录上传中、可用和失败状态。真实缩略图、视频转码和海报帧仍需要接入异步媒体处理服务后写回 `assets` / `upload_tasks`，当前失败可重新选择文件上传。
 - 本地演示上传使用浏览器 `ObjectURL`，刷新后不会持久化；接入 Storage 后应由 `/api/upload/sign` 签发短时上传凭证。
 - 真实邮件找回密码由 Supabase Auth 模板发送；未配置邮件服务时，登录页面只展示入口，不伪造成功结果。

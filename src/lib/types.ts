@@ -15,6 +15,9 @@ export type Asset = {
   duration?: string
   size: string
   createdAt: string
+  storagePath?: string
+  mimeType?: string
+  error?: string
 }
 
 export type Project = {
