@@ -44,6 +44,7 @@ export async function serializeProject(client: SupabaseClient, raw: any) {
     tags: raw.tags ?? [],
     status: raw.status,
     featured: raw.featured,
+    sort_order: raw.sort_order ?? 0,
     location: raw.location,
     client: raw.client,
     cover: (cover as any)?.src ?? '',
@@ -58,8 +59,17 @@ export function serializeInquiry(raw: any) {
   return { id: raw.id, name: raw.name, email: raw.email, project_type: raw.project_type ?? 'Other', message: raw.message, status: raw.status, private_note: raw.private_note ?? '', created_at: raw.created_at }
 }
 
-export function serializeSettings(raw: any) {
+export async function serializeSettings(raw: any, client: SupabaseClient) {
   if (!raw) return null
   const seo = raw.seo && typeof raw.seo === 'object' ? raw.seo : {}
-  return { site_name: raw.site_name, short_bio: raw.short_bio ?? '', contact_email: raw.contact_email ?? '', hero_title: raw.hero_title ?? '', hero_subtitle: raw.hero_subtitle ?? '', accent: raw.accent ?? '#626a4c', social_links: raw.social_links ?? [], hero_image: seo.hero_image ?? '', seo }
+  const content = seo.content ?? { texts: {}, images: {} }
+  const ids = [...new Set([raw.hero_asset_id, ...Object.values(content.images ?? {}).map((image: any) => image.assetId)].filter(Boolean))]
+  const images: Record<string, any> = {}
+  if (ids.length) {
+    const { data, error } = await client.from('assets').select('*').eq('owner_id', raw.owner_id).eq('kind', 'image').eq('status', 'ready').in('id', ids)
+    if (error) throw new Error('Unable to read site images')
+    for (const asset of data ?? []) images[asset.id] = await signedAsset(client, asset)
+  }
+  const resolved = Object.fromEntries(Object.entries(content.images ?? {}).map(([key, image]: [string, any]) => [key, image.assetId ? { ...image, src: images[image.assetId]?.src ?? '' } : image]))
+  return { site_name: raw.site_name, short_bio: raw.short_bio ?? '', contact_email: raw.contact_email ?? '', hero_title: raw.hero_title ?? '', hero_subtitle: raw.hero_subtitle ?? '', accent: raw.accent ?? '#626a4c', social_links: raw.social_links ?? [], hero_asset_id: raw.hero_asset_id ?? null, hero_alt: seo.hero_alt ?? '', hero_image: raw.hero_asset_id ? images[raw.hero_asset_id]?.src ?? '' : seo.hero_image ?? '', content: { texts: content.texts ?? {}, images: resolved } }
 }

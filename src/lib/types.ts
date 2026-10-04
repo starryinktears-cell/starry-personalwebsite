@@ -31,6 +31,8 @@ export type Project = {
   tags: string[]
   status: ProjectStatus
   featured: boolean
+  sortOrder?: number
+  coverAssetId?: string
   location?: string
   client?: string
   cover: string
@@ -63,6 +65,15 @@ export type SiteSettings = {
   heroTitle: string
   heroSubtitle: string
   heroImage: string
+  heroAssetId?: string | null
+  heroAlt?: string
+  content?: SiteContent
   accent: string
   socialLinks: { label: string; href: string }[]
+}
+
+export type SiteImage = { src: string; assetId?: string | null; alt: string }
+export type SiteContent = {
+  texts: Record<string, { en: string; zh: string }>
+  images: Record<string, SiteImage>
 }

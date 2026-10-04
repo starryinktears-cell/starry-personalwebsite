@@ -5,7 +5,7 @@ import { authenticateRequest, json } from '../../_lib/supabase.js'
 import { serializeProject } from '../../_lib/portfolio.js'
 
 const assetSchema = z.object({ id: z.string().uuid(), alt: z.string().max(500).optional(), position: z.number().int().min(0).optional() })
-const bodySchema = z.object({ slug: z.string().trim().min(1).max(160), title: z.string().trim().min(1).max(200), summary: z.string().max(2000).optional(), body: z.string().max(100000).optional(), year: z.number().int().min(1900).max(2200).optional(), category: z.string().trim().min(1).max(80), tags: z.array(z.string().max(80)).max(30).optional(), location: z.string().max(160).optional(), client: z.string().max(160).optional(), status: z.enum(['draft', 'published', 'archived']).optional(), featured: z.boolean().optional(), cover_asset_id: z.string().uuid().nullable().optional(), assets: z.array(assetSchema).max(500).optional() })
+const bodySchema = z.object({ slug: z.string().trim().min(1).max(160), title: z.string().trim().min(1).max(200), summary: z.string().max(2000).optional(), body: z.string().max(100000).optional(), year: z.number().int().min(1900).max(2200).optional(), category: z.string().trim().min(1).max(80), tags: z.array(z.string().max(80)).max(30).optional(), location: z.string().max(160).optional(), client: z.string().max(160).optional(), status: z.enum(['draft', 'published', 'archived']).optional(), featured: z.boolean().optional(), sort_order: z.number().int().min(-1000000).max(1000000).optional(), cover_asset_id: z.string().uuid().nullable().optional(), assets: z.array(assetSchema).max(500).optional() })
 
 async function readProject(auth: any, id: string) {
   const { data, error } = await auth.supabase.from('projects').select('*, project_assets(position, asset:assets(*))').eq('owner_id', auth.user.id).eq('id', id).is('deleted_at', null).single()
@@ -39,11 +39,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!parsed.success) return json(res, 400, { error: 'invalid_input', fields: parsed.error.flatten().fieldErrors })
   const existing = await readProject(auth, id)
   if (!existing) return json(res, 404, { error: 'not_found' })
-  const { assets = [], ...fields } = parsed.data
-  const status = fields.status ?? 'draft'
+  const { assets = existing.serialized.assets.map((asset, position) => ({ id: asset!.id, alt: asset!.alt, position })), ...fields } = parsed.data
+  const status = fields.status ?? existing.raw.status
+  if (fields.cover_asset_id === undefined) fields.cover_asset_id = existing.raw.cover_asset_id
   const assetError = await validateAssets(auth, assets, fields.cover_asset_id, status)
   if (assetError) return json(res, 400, { error: assetError })
-  const { error } = await auth.supabase.from('projects').update({ ...fields, status, published_at: status === 'published' ? new Date().toISOString() : null }).eq('id', id).eq('owner_id', auth.user.id)
+  const { error } = await auth.supabase.from('projects').update({ ...fields, status, published_at: status === 'published' ? existing.raw.published_at ?? new Date().toISOString() : null }).eq('id', id).eq('owner_id', auth.user.id)
   if (error) return json(res, 400, { error: 'update_failed', detail: error.message })
   const { error: removeError } = await auth.supabase.from('project_assets').delete().eq('project_id', id)
   if (removeError) return json(res, 400, { error: 'assets_sync_failed', detail: removeError.message })

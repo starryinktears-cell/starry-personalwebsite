@@ -46,6 +46,8 @@ export function normalizeProject(raw: any): Project {
     tags: Array.isArray(raw.tags) ? raw.tags : [],
     status: raw.status ?? 'draft',
     featured: Boolean(raw.featured),
+    sortOrder: Number(raw.sortOrder ?? raw.sort_order ?? 0),
+    coverAssetId: raw.coverAssetId ?? raw.cover_asset_id ?? coverAsset?.id,
     location: raw.location ?? undefined,
     client: raw.client ?? undefined,
     cover: raw.cover ?? coverAsset?.src ?? '',
@@ -72,7 +74,10 @@ export function normalizeSettings(raw: any): SiteSettings {
     contactEmail: raw?.contactEmail ?? raw?.contact_email ?? seedSettings.contactEmail,
     heroTitle: raw?.heroTitle ?? raw?.hero_title ?? seedSettings.heroTitle,
     heroSubtitle: raw?.heroSubtitle ?? raw?.hero_subtitle ?? seedSettings.heroSubtitle,
-    heroImage: raw?.heroImage ?? raw?.hero_image ?? seedSettings.heroImage,
+    heroImage: (raw?.heroImage ?? raw?.hero_image) || seedSettings.heroImage,
+    heroAssetId: raw?.heroAssetId ?? raw?.hero_asset_id ?? null,
+    heroAlt: raw?.heroAlt ?? raw?.hero_alt ?? '',
+    content: raw?.content ?? { texts: {}, images: {} },
     accent: raw?.accent ?? seedSettings.accent,
     socialLinks: Array.isArray(raw?.socialLinks) ? raw.socialLinks : (Array.isArray(raw?.social_links) ? raw.social_links : seedSettings.socialLinks),
   }
@@ -86,7 +91,8 @@ function readDemo<T>(key: string, fallback: T): T {
 }
 
 function writeDemo<T>(key: string, value: T) {
-  try { localStorage.setItem(`studio-demo-${key}`, JSON.stringify(value)) } catch { /* storage is optional in private browsing */ }
+  localStorage.setItem(`studio-demo-${key}`, JSON.stringify(value))
+  localStorage.setItem('studio-content-updated', String(Date.now()))
 }
 
 async function token() {
@@ -100,21 +106,24 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   const headers = new Headers(init.headers)
   headers.set('content-type', 'application/json')
   if (accessToken) headers.set('authorization', `Bearer ${accessToken}`)
-  const response = await fetch(path, { ...init, headers })
+  const response = await fetch(path, { cache: 'no-store', ...init, headers })
   const contentType = response.headers.get('content-type') ?? ''
   if (!contentType.includes('application/json')) throw new Error(`Unexpected response from ${path}`)
-  const payload = await response.json() as T & { detail?: string; error?: string }
-  if (!response.ok) throw new Error(payload.detail ?? payload.error ?? `Request failed (${response.status})`)
+  const payload = await response.json() as T & { detail?: string; error?: string; fields?: Record<string, string[]> }
+  if (!response.ok) {
+    const messages: Record<string, string> = { site_image_not_owned_or_not_ready: '图片不属于当前账号或尚未上传完成。', select_private_image_from_library: '私有图片请从媒体库选择，不能永久保存临时签名地址。', site_image_not_owned: '图片不属于当前账号。', unauthorized: '登录会话已失效，请重新登录。' }
+    const fields = payload.fields ? Object.entries(payload.fields).map(([key, errors]) => `${key}: ${errors.join('，')}`).join('；') : ''
+    throw new Error(payload.detail ?? messages[payload.error ?? ''] ?? (fields || payload.error || `Request failed (${response.status})`))
+  }
   return payload as T
 }
 
 export async function loadPublicData() {
+  if (demoMode) return { projects: readDemo('projects', seedProjects).filter(project => project.status === 'published').sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)), settings: normalizeSettings(readDemo('settings', seedSettings)) }
   try {
     const payload = await apiRequest<{ projects?: any[]; settings?: any }>('/api/projects')
     return { projects: (payload.projects ?? []).map(normalizeProject), settings: normalizeSettings(payload.settings) }
-  } catch {
-    return { projects: demoMode ? readDemo('projects', seedProjects) : [], settings: demoMode ? normalizeSettings(readDemo('settings', seedSettings)) : seedSettings }
-  }
+  } catch (error) { throw new Error(`主站数据读取失败：${error instanceof Error ? error.message : String(error)}`) }
 }
 
 export async function loadAdminData() {
@@ -127,9 +136,9 @@ export async function loadAdminData() {
   return { projects: (projectPayload.projects ?? []).map(normalizeProject), inquiries: (inquiryPayload.inquiries ?? []).map(normalizeInquiry), settings: normalizeSettings(settingsPayload.settings) }
 }
 
-function projectPayload(project: Project, status = project.status) {
-  const coverAsset = project.assets.find((asset) => asset.src === project.cover || asset.id === project.cover)
-  return { slug: project.slug, title: project.title, summary: project.summary, body: project.body, year: project.year, category: project.category, tags: project.tags, location: project.location, client: project.client, status, featured: project.featured, cover_asset_id: coverAsset?.id ?? null, assets: project.assets.map((asset, position) => ({ id: asset.id, name: asset.name, kind: asset.kind, alt: asset.id === coverAsset?.id && project.coverAlt ? project.coverAlt : asset.alt, status: asset.status, position })) }
+export function projectPayload(project: Project, status = project.status) {
+  const coverAsset = project.assets.find((asset) => asset.id === project.coverAssetId) ?? project.assets.find((asset) => asset.src === project.cover || asset.id === project.cover)
+  return { slug: project.slug, title: project.title, summary: project.summary, body: project.body, year: project.year, category: project.category, tags: project.tags, location: project.location, client: project.client, sort_order: project.sortOrder ?? 0, status, featured: project.featured, cover_asset_id: coverAsset?.id ?? null, assets: project.assets.map((asset, position) => ({ id: asset.id, name: asset.name, kind: asset.kind, alt: asset.id === coverAsset?.id ? project.coverAlt : asset.alt, status: asset.status, position })) }
 }
 
 export async function saveProject(project: Project, status = project.status, forceCreate = false) {
@@ -148,6 +157,15 @@ export async function saveSettings(settings: SiteSettings) {
   if (demoMode) { writeDemo('settings', settings); return settings }
   const response = await apiRequest<{ settings: any }>('/api/admin/settings', { method: 'PUT', body: JSON.stringify(settings) })
   return normalizeSettings(response.settings)
+}
+
+export async function loadMediaLibrary(): Promise<Asset[]> {
+  if (demoMode) {
+    const attached = readDemo('projects', seedProjects).flatMap(project => project.assets)
+    return [...new Map([...readDemo<Asset[]>('assets', []), ...attached].map(asset => [asset.id, asset])).values()]
+  }
+  const payload = await apiRequest<{ assets: unknown[] }>('/api/admin/assets')
+  return payload.assets.map(normalizeAsset)
 }
 
 export async function updateInquiry(id: string, patch: { status?: Inquiry['status']; note?: string }) {

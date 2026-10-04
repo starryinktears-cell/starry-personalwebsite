@@ -8,7 +8,7 @@ export default {
         paper2: '#ece8df',
         ink: '#1c1d1a',
         inkMuted: '#5e5f58',
-        olive: '#626a4c',
+        olive: 'rgb(var(--olive-rgb, 98 106 76) / <alpha-value>)',
         oliveDark: '#3a3f2d',
         ember: '#c8743a',
         night: '#0e0f0d',

@@ -3,7 +3,8 @@ import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { authenticateRequest, json } from '../_lib/supabase.js'
 
-const schema = z.object({ filename: z.string().trim().min(1).max(180), contentType: z.string().regex(/^(image\/(jpeg|png|webp)|video\/(mp4|quicktime))$/), size: z.number().int().positive().max(2 * 1024 * 1024 * 1024) })
+const maxMediaBytes = Math.min(2 * 1024 * 1024 * 1024, Math.max(1, Number(process.env.MAX_MEDIA_BYTES) || 50 * 1024 * 1024))
+const schema = z.object({ filename: z.string().trim().min(1).max(180), contentType: z.string().regex(/^(image\/(jpeg|png|webp)|video\/(mp4|quicktime))$/), size: z.number().int().positive().max(maxMediaBytes) })
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return json(res, 405, { error: 'method_not_allowed' })
@@ -21,5 +22,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (assetError || !asset) return json(res, 500, { error: 'asset_create_failed', detail: assetError?.message })
   const { data: task, error: taskError } = await auth.supabase.from('upload_tasks').insert({ owner_id: auth.user.id, asset_id: asset.id, storage_path: path, status: 'uploading', bytes_total: parsed.data.size }).select('id').single()
   if (taskError || !task) { await auth.supabase.from('assets').delete().eq('id', asset.id).eq('owner_id', auth.user.id); return json(res, 500, { error: 'task_create_failed', detail: taskError?.message }) }
-  return json(res, 200, { path, token: signed.token, signedUrl: signed.signedUrl, assetId: asset.id, taskId: task.id, expiresIn: 600 })
+  return json(res, 200, { path, bucket, token: signed.token, signedUrl: signed.signedUrl, assetId: asset.id, taskId: task.id, expiresIn: 600 })
 }

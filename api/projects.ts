@@ -12,5 +12,5 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
     supabase.from('site_settings').select('*').eq('owner_id', ownerId).maybeSingle(),
   ])
   if (projectError || settingsError) return json(res, 500, { error: 'query_failed' })
-  return json(res, 200, { projects: await Promise.all((projects ?? []).map((project) => serializeProject(supabase, project))), settings: serializeSettings(settings) })
+  return json(res, 200, { projects: await Promise.all((projects ?? []).map((project) => serializeProject(supabase, project))), settings: await serializeSettings(settings, supabase) })
 }

@@ -61,5 +61,16 @@ npm run verify
 ## 当前边界
 
 - 媒体上传会写入私有 Storage，并通过 Tus 分块上传、`retryDelays` 与 fingerprint 恢复断点；`upload_tasks` 记录上传中、可用和失败状态。真实缩略图、视频转码和海报帧仍需要接入异步媒体处理服务后写回 `assets` / `upload_tasks`，当前失败可重新选择文件上传。
-- 本地演示上传使用浏览器 `ObjectURL`，刷新后不会持久化；接入 Storage 后应由 `/api/upload/sign` 签发短时上传凭证。
+- 本地演示支持将 2 MB 以下的上传文件保存在浏览器 localStorage，刷新后仍可读取；受浏览器存储配额限制，大文件必须使用真实 Storage。真实环境通过 `/api/upload/sign` 创建上传任务，并以 owner_id + 文件信息保存不含凭证的任务引用，重新选择同一文件可恢复 Tus 断点。
 - 真实邮件找回密码由 Supabase Auth 模板发送；未配置邮件服务时，登录页面只展示入口，不伪造成功结果。
+
+## 后台与主站内容联动
+
+- `/admin/settings` 管理导航/页脚品牌、联系邮箱、简介、主色、社交链接、首屏、首页能力区文案与配图、宣言与统计，以及关于/服务/联系页图片。首页文案可分别填写中文、英文；若设置了语言专用首屏文案，会优先于共用首屏标题。
+- 图片可以上传或从当前账号媒体库选择；站点媒体保存资产 ID，服务端每次读取重新生成签名地址，不把过期地址当作永久图片地址。首页主图使用现有 `hero_asset_id`，扩展内容保存在 `site_settings.seo.content`，不需要新增表或破坏原有迁移。
+- `/admin/projects/:id` 的标题、摘要、正文、封面、Alt、地点、客户、媒体顺序和展示顺序控制公开作品。只有已发布项目出现在主站；精选勾选控制首页精选。保存已发布作品不会自动转为草稿，下线使用 archived 状态。
+- `/api/admin/assets` 返回当前账号全部媒体，包括未关联项目的站点图片；原始媒体桶维持私有，所有新增查询保留 owner_id 过滤。
+- 上传默认上限 50 MB，与当前生产 Supabase 限制一致。只有在 Supabase 套餐、全局设置和 bucket 均允许更大文件后，才能同时提高 `MAX_MEDIA_BYTES`（Node）与 `VITE_MAX_MEDIA_BYTES`（前端，重建生效）。上限最高 2 GB；仅改环境变量不会解除 Supabase 限制。
+- 本地没有 Supabase 环境变量时是演示模式；`npm run dev` 单独运行 Vite，不提供真实 Node API。真实本地联调使用 `npm run api:dev` 并配置 `.env.local`。
+
+本次核查证据、字段映射与未覆盖边界见 [后台与主站联动核查](docs/admin-content-audit.md)。

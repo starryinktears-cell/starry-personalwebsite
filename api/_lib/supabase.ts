@@ -12,7 +12,8 @@ export function getServerSupabase() {
   return cached
 }
 
-export function json(res: { status: (code: number) => { json: (body: unknown) => void } }, status: number, body: unknown) {
+export function json(res: { status: (code: number) => { json: (body: unknown) => void }; setHeader?: (name: string, value: string) => unknown }, status: number, body: unknown) {
+  res.setHeader?.('Cache-Control', 'private, no-store')
   return res.status(status).json(body)
 }
 

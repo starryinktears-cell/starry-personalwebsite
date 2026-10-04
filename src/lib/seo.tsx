@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
-import type { Project } from './types'
+import type { Project, SiteSettings } from './types'
 
 const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin
 
@@ -15,7 +15,7 @@ const upsertMeta = (name: string, content: string, property = false) => {
   element.content = content
 }
 
-export function RouteMeta({ projects = [] }: { projects?: Project[] }) {
+export function RouteMeta({ projects = [], settings }: { projects?: Project[]; settings?: SiteSettings }) {
   const location = useLocation()
   useEffect(() => {
     const pathname = location.pathname
@@ -36,6 +36,10 @@ export function RouteMeta({ projects = [] }: { projects?: Project[] }) {
     else if (pathname.startsWith('/admin')) title = 'Private workspace | Studio / 01'
     else title = 'Out of focus | Studio / 01'
 
+    if (settings) {
+      title = title.replaceAll('Studio / 01', settings.siteName)
+      if (pathname === '/') { title = `${settings.siteName} — ${settings.heroTitle}`; description = settings.shortBio; image = settings.heroImage }
+    }
     document.title = title
     upsertMeta('description', description)
     upsertMeta('og:title', title, true)
@@ -51,9 +55,9 @@ export function RouteMeta({ projects = [] }: { projects?: Project[] }) {
     const script = document.createElement('script')
     script.id = 'studio-jsonld'
     script.type = 'application/ld+json'
-    script.textContent = JSON.stringify(project ? { '@context': 'https://schema.org', '@type': 'CreativeWork', name: project.title, description: project.summary, image: new URL(image, siteUrl).toString(), dateCreated: String(project.year), locationCreated: project.location } : { '@context': 'https://schema.org', '@type': 'Organization', name: 'Studio / 01', url: siteUrl, image: new URL('/images/hero.webp', siteUrl).toString() })
+    script.textContent = JSON.stringify(project ? { '@context': 'https://schema.org', '@type': 'CreativeWork', name: project.title, description: project.summary, image: new URL(image, siteUrl).toString(), dateCreated: String(project.year), locationCreated: project.location } : { '@context': 'https://schema.org', '@type': 'Organization', name: settings?.siteName ?? 'Studio / 01', url: siteUrl, image: new URL(settings?.heroImage ?? '/images/hero.webp', siteUrl).toString() })
     document.head.appendChild(script)
-  }, [location.pathname, projects])
+  }, [location.pathname, projects, settings])
 
   useEffect(() => {
     let activeTitle = document.title
