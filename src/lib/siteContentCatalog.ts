@@ -248,6 +248,10 @@ export const editableTexts: Record<string, { en: string; zh: string; group: stri
 const addText = (key: string, en: string, zh: string, group: string) => { editableTexts[key] = { en, zh, group } }
 addText('site.clockCity', 'REYKJAVÍK', 'REYKJAVÍK', '全站')
 addText('site.clockZone', 'GMT', 'GMT', '全站')
+addText('site.nav.work', 'WORK', '作品', '全站')
+addText('site.nav.about', 'ABOUT', '关于', '全站')
+addText('site.nav.services', 'SERVICES', '服务', '全站')
+addText('site.nav.contact', 'CONTACT', '联系', '全站')
 addText('home.scene', 'SCENE 01 — TAKE 03', 'SCENE 01 — TAKE 03', '首页')
 addText('home.coordinates', 'N 64°08′ · W 21°56′', 'N 64°08′ · W 21°56′', '首页')
 addText('home.exposure', 'ƒ/2.8 · 1/250 · ISO 400', 'ƒ/2.8 · 1/250 · ISO 400', '首页')
@@ -301,7 +305,7 @@ export const contentSections: Section[] = [
   ...[0, 1, 2, 3].map((index): Section => ({ page: '服务', title: `服务 ${index + 1} / ${serviceDefaults[index][1]}`, images: [], fields: fields([[`services.item.${index}.title`, '服务标题'], [`services.item.${index}.description`, '服务说明'], [`services.item.${index}.deliverables`, '交付清单（每行一项）']]) })),
   { page: '服务', title: '合作流程', images: [], fields: fields([['ServicesPage.b2bb0035', '流程区块标题'], ...[0, 1, 2, 3].flatMap(index => [[`services.process.${index}.title`, `步骤 ${index + 1} 标题`], [`services.process.${index}.description`, `步骤 ${index + 1} 说明`]] as [string, string][]), ['ServicesPage.a08934e1', '合作按钮']]) },
   { page: '联系', title: '联系页配图', fields: [], images: ['contact'] },
-  { page: '全站', title: '导航状态', fields: fields([['PublicLayout.8c8738c1', '合作状态'], ['site.clockCity', '时钟城市名称'], ['site.clockZone', '时钟旁标签']]), images: [] },
+  { page: '全站', title: '导航状态', fields: fields([['site.nav.work', '作品导航'], ['site.nav.about', '关于导航'], ['site.nav.services', '服务导航'], ['site.nav.contact', '联系导航'], ['PublicLayout.8c8738c1', '合作状态'], ['site.clockCity', '时钟城市名称'], ['site.clockZone', '时钟旁标签']]), images: [] },
   { page: '页脚', title: '页脚文字', fields: fields([['Footer.ab353dfd', '联系按钮'], ['Footer.48f0c1a7', '返回顶部按钮'], ['Footer.e7ef3aca', '地点标识'], ['site.location', '地点'], ['Footer.0137b9ad', '社交标识'], ['Footer.fc8e4190', '版权说明'], ['Footer.2f158034', '隐私链接'], ['site.marquee', '滚动文字']]), images: [] },
 ]
 
