@@ -243,3 +243,71 @@ export const editableTexts: Record<string, { en: string; zh: string; group: stri
     "group": "全站"
   }
 }
+
+// The editor and public pages share these keys; never key content by its current title.
+const addText = (key: string, en: string, zh: string, group: string) => { editableTexts[key] = { en, zh, group } }
+addText('site.clockCity', 'REYKJAVÍK', 'REYKJAVÍK', '全站')
+addText('site.clockZone', 'GMT', 'GMT', '全站')
+addText('home.scene', 'SCENE 01 — TAKE 03', 'SCENE 01 — TAKE 03', '首页')
+addText('home.coordinates', 'N 64°08′ · W 21°56′', 'N 64°08′ · W 21°56′', '首页')
+addText('home.exposure', 'ƒ/2.8 · 1/250 · ISO 400', 'ƒ/2.8 · 1/250 · ISO 400', '首页')
+addText('home.frame', '24 FPS — 00:00:24', '24 FPS — 00:00:24', '首页')
+addText('home.scroll', 'SCROLL', '向下浏览', '首页')
+addText('home.signature', 'PLACES · PEOPLE · PERSPECTIVE', '地方 · 人物 · 视角', '首页')
+const serviceDefaults = [
+  ['Brand stories', '品牌故事', 'Authentic visual narratives for meaningful brands.', '为有意义的品牌创作真实的视觉叙事。', 'Concept and treatment\nArt direction\nCampaign stills', '概念与创意方案\n艺术指导\n品牌摄影'],
+  ['Editorial', '编辑内容', 'Striking imagery for press, publications and culture.', '为媒体、出版与文化创作有力量的影像。', 'Portraits\nLocation stories\nPrint-ready selects', '人物肖像\n地方故事\n印刷精选'],
+  ['Campaigns', '品牌企划', 'Bold visuals for bigger ideas.', '为更大的想法打造大胆的视觉。', 'Creative direction\nProduction\nDelivery toolkit', '创意指导\n制作执行\n交付工具包'],
+  ['Film & motion', '影像与动态', 'Cinematic stories that inspire and endure.', '创作能够启发并长久留存的电影感故事。', 'Short films\nMotion systems\nSound and edit', '短片\n动态视觉系统\n声音与剪辑'],
+]
+serviceDefaults.forEach(([en, zh, descriptionEn, descriptionZh, itemsEn, itemsZh], index) => {
+  addText(`services.item.${index}.title`, en, zh, '服务')
+  addText(`services.item.${index}.description`, descriptionEn, descriptionZh, '服务')
+  addText(`services.item.${index}.deliverables`, itemsEn, itemsZh, '服务')
+})
+const processDefaults = [
+  ['Discover', '了解', 'Understand your vision, people and goals.', '理解你的愿景、受众与目标。'],
+  ['Shoot', '拍摄', 'Bring the right people and light together.', '让合适的人与光线在一起。'],
+  ['Edit', '剪辑', 'Shape the rhythm and refine every frame.', '塑造节奏，打磨每一帧。'],
+  ['Deliver', '交付', 'Share a system that keeps working after launch.', '交付一个发布后仍能工作的系统。'],
+]
+processDefaults.forEach(([en, zh, descriptionEn, descriptionZh], index) => {
+  addText(`services.process.${index}.title`, en, zh, '服务')
+  addText(`services.process.${index}.description`, descriptionEn, descriptionZh, '服务')
+})
+const timelineDefaults = [['2017', 'First light', '第一束光'], ['2020', 'A wider frame', '更宽的取景'], ['2023', 'Field journal', '现场手记'], ['2026', 'The next story', '下一个故事']]
+timelineDefaults.forEach(([year, en, zh], index) => {
+  addText(`about.timeline.${index}.year`, year, year, '关于')
+  addText(`about.timeline.${index}.title`, en, zh, '关于')
+  addText(`about.timeline.${index}.description`, 'Photography, film and a little more time.', '摄影、影像，以及多一点时间。', '关于')
+})
+
+export const contentPages = ['首页', '关于', '服务', '联系', '全站', '页脚'] as const
+export type ContentPage = typeof contentPages[number]
+type Section = { page: ContentPage; title: string; fields: { key: string; label: string }[]; images: string[] }
+const fields = (entries: [string, string][]) => entries.map(([key, label]) => ({ key, label }))
+export const contentSections: Section[] = [
+  { page: '首页', title: '首屏', images: ['hero'], fields: fields([
+    ['home.heroTitle', '首屏大标题'], ['home.heroSubtitle', '首屏副标题'], ['HomePage.3e1e9eba', '查看作品按钮'], ['HomePage.a08934e1', '合作按钮'],
+    ['home.scene', '左上场记'], ['home.coordinates', '左上坐标'], ['home.exposure', '右下曝光参数'], ['home.frame', '右下帧率与时码'], ['home.scroll', '滚动提示'], ['home.signature', '右下签名'],
+  ]) },
+  { page: '首页', title: '精选作品', images: [], fields: fields([['HomePage.6d674d76', '区块标识'], ['HomePage.b23b30be', '区块标题']]) },
+  { page: '首页', title: '能力区简介', images: [], fields: fields([['HomePage.2fbbf645', '区块标识'], ['HomePage.781240d4', '左侧简介']]) },
+  ...[['portrait', 'window'], ['dusk', 'mountainLake'], ['olive', 'studio'], ['forest', 'shore']].map((images, index): Section => ({ page: '首页', title: `能力 ${index + 1} / ${editableTexts[`home.capability.${index}.title`].zh}`, images, fields: fields([[`home.capability.${index}.title`, '能力标题'], [`home.capability.${index}.description`, '能力说明']]) })),
+  { page: '首页', title: '宣言与统计', images: [], fields: fields([['HomePage.babb7af4', '区块标识'], ['HomePage.3daa76c6', '宣言'], ...[0, 1, 2].flatMap(index => [[`home.stat.${index}.value`, `统计 ${index + 1} 数值`], [`home.stat.${index}.label`, `统计 ${index + 1} 名称`]] as [string, string][])]) },
+  { page: '关于', title: '人物介绍', images: ['about'], fields: fields([['AboutPage.491a3827', '区块标识'], ['AboutPage.4012d26e', '页面大标题'], ['AboutPage.d9b21b8c', '介绍副标题'], ['AboutPage.92bac68a', '人物简介'], ['AboutPage.9bbb81cf', '地点与合作状态']]) },
+  { page: '关于', title: '时间线与引言', images: [], fields: fields([['AboutPage.47c6b96c', '时间线标题'], ...[0, 1, 2, 3].flatMap(index => [[`about.timeline.${index}.year`, `经历 ${index + 1} 年份`], [`about.timeline.${index}.title`, `经历 ${index + 1} 标题`], [`about.timeline.${index}.description`, `经历 ${index + 1} 说明`]] as [string, string][]), ['AboutPage.8fe18a3b', '页末引言']]) },
+  { page: '服务', title: '服务页介绍', images: ['serviceA', 'serviceB'], fields: fields([['ServicesPage.f66a82e4', '区块标识'], ['ServicesPage.72318c38', '页面大标题'], ['ServicesPage.c4a681de', '页面简介']]) },
+  ...[0, 1, 2, 3].map((index): Section => ({ page: '服务', title: `服务 ${index + 1} / ${serviceDefaults[index][1]}`, images: [], fields: fields([[`services.item.${index}.title`, '服务标题'], [`services.item.${index}.description`, '服务说明'], [`services.item.${index}.deliverables`, '交付清单（每行一项）']]) })),
+  { page: '服务', title: '合作流程', images: [], fields: fields([['ServicesPage.b2bb0035', '流程区块标题'], ...[0, 1, 2, 3].flatMap(index => [[`services.process.${index}.title`, `步骤 ${index + 1} 标题`], [`services.process.${index}.description`, `步骤 ${index + 1} 说明`]] as [string, string][]), ['ServicesPage.a08934e1', '合作按钮']]) },
+  { page: '联系', title: '联系页配图', fields: [], images: ['contact'] },
+  { page: '全站', title: '导航状态', fields: fields([['PublicLayout.8c8738c1', '合作状态'], ['site.clockCity', '时钟城市名称'], ['site.clockZone', '时钟旁标签']]), images: [] },
+  { page: '页脚', title: '页脚文字', fields: fields([['Footer.ab353dfd', '联系按钮'], ['Footer.48f0c1a7', '返回顶部按钮'], ['Footer.e7ef3aca', '地点标识'], ['site.location', '地点'], ['Footer.0137b9ad', '社交标识'], ['Footer.fc8e4190', '版权说明'], ['Footer.2f158034', '隐私链接'], ['site.marquee', '滚动文字']]), images: [] },
+]
+
+// Keep the earlier generic fields available for existing users and saved keys.
+for (const page of contentPages) {
+  const used = new Set(contentSections.flatMap(section => section.fields.map(field => field.key)))
+  const remaining = Object.entries(editableTexts).filter(([key, value]) => value.group === page && !used.has(key))
+  if (remaining.length) contentSections.push({ page, title: '其他兼容文案', images: [], fields: remaining.map(([key, value]) => ({ key, label: value.zh })) })
+}

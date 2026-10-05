@@ -1,8 +1,9 @@
 import type { SiteSettings, SiteImage } from './types'
 import type { Language } from './i18n'
 import { editableTexts } from './siteContentCatalog'
+import { siteSettings as defaults } from './mockData'
 
-export { editableTexts }
+export { editableTexts, contentSections, contentPages } from './siteContentCatalog'
 export const imageSlots: Record<string, { label: string; src: string; alt: string }> = {
   portrait: { label: '首页 / 摄影配图 1', src: '/images/portrait.webp', alt: '肖像摄影' },
   window: { label: '首页 / 摄影配图 2', src: '/images/window.webp', alt: '窗边的光' },
@@ -19,8 +20,11 @@ export const imageSlots: Record<string, { label: string; src: string; alt: strin
 }
 
 export function contentText(settings: SiteSettings, key: string, language: Language) {
-  const value = settings.content?.texts[key] ?? editableTexts[key]
-  return value?.[language] ?? ''
+  const saved = settings.content?.texts[key]?.[language]
+  if (saved !== undefined) return saved
+  const legacy = key === 'home.heroTitle' ? 'heroTitle' : key === 'home.heroSubtitle' ? 'heroSubtitle' : key === 'AboutPage.92bac68a' ? 'shortBio' : null
+  if (legacy && settings[legacy] !== defaults[legacy]) return settings[legacy]
+  return editableTexts[key]?.[language] ?? ''
 }
 
 export function siteImage(settings: SiteSettings, key: string): SiteImage {

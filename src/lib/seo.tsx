@@ -1,6 +1,8 @@
 import { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import type { Project, SiteSettings } from './types'
+import { contentText } from './siteContent'
+import type { Language } from './i18n'
 
 const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin
 
@@ -15,7 +17,7 @@ const upsertMeta = (name: string, content: string, property = false) => {
   element.content = content
 }
 
-export function RouteMeta({ projects = [], settings }: { projects?: Project[]; settings?: SiteSettings }) {
+export function RouteMeta({ projects = [], settings, language = 'zh' }: { projects?: Project[]; settings?: SiteSettings; language?: Language }) {
   const location = useLocation()
   useEffect(() => {
     const pathname = location.pathname
@@ -38,7 +40,7 @@ export function RouteMeta({ projects = [], settings }: { projects?: Project[]; s
 
     if (settings) {
       title = title.replaceAll('Studio / 01', settings.siteName)
-      if (pathname === '/') { title = `${settings.siteName} — ${settings.heroTitle}`; description = settings.shortBio; image = settings.heroImage }
+      if (pathname === '/') { title = `${settings.siteName} — ${contentText(settings, 'home.heroTitle', language)}`; description = settings.shortBio; image = settings.heroImage }
     }
     document.title = title
     upsertMeta('description', description)
@@ -57,7 +59,7 @@ export function RouteMeta({ projects = [], settings }: { projects?: Project[]; s
     script.type = 'application/ld+json'
     script.textContent = JSON.stringify(project ? { '@context': 'https://schema.org', '@type': 'CreativeWork', name: project.title, description: project.summary, image: new URL(image, siteUrl).toString(), dateCreated: String(project.year), locationCreated: project.location } : { '@context': 'https://schema.org', '@type': 'Organization', name: settings?.siteName ?? 'Studio / 01', url: siteUrl, image: new URL(settings?.heroImage ?? '/images/hero.webp', siteUrl).toString() })
     document.head.appendChild(script)
-  }, [location.pathname, projects, settings])
+  }, [location.pathname, projects, settings, language])
 
   useEffect(() => {
     let activeTitle = document.title

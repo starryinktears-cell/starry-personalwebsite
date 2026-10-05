@@ -4,6 +4,7 @@ import settingsHandler from '../api/admin/settings'
 import publicHandler from '../api/projects'
 import { serializeSettings } from '../api/_lib/portfolio'
 import { normalizeSettings } from '../src/lib/portfolioApi'
+import { editableTexts } from '../src/lib/siteContentCatalog'
 
 const runtime = vi.hoisted(() => ({ auth: null as any, client: null as any }))
 vi.mock('../api/_lib/supabase.js', () => ({
@@ -52,6 +53,21 @@ beforeEach(() => {
 })
 
 describe('Node settings API and public read contract (mock database)', () => {
+  it('round trips the full page catalog and all screenshot image slots through the existing JSONB contract', async () => {
+    const texts = Object.fromEntries(Object.entries(editableTexts).map(([key, value]) => [key, { en: value.en, zh: value.zh }]))
+    texts['services.item.0.deliverables'] = { zh: '创意方案\n成片交付', en: 'Proposal\nFinal film' }
+    const images = Object.fromEntries(['portrait', 'window', 'dusk', 'mountainLake', 'olive', 'studio', 'forest', 'shore', 'about', 'serviceA', 'serviceB'].map(key => [key, { assetId: ownImage, src: '', alt: `配图 ${key}` }]))
+    const res = response()
+    await settingsHandler({ method: 'PUT', body: { ...basic, content: { texts, images } } } as any, res)
+    expect(res.code).toBe(200)
+    const publicRes = response()
+    await publicHandler({ method: 'GET' } as any, publicRes)
+    expect(publicRes.code).toBe(200)
+    const settings = normalizeSettings(publicRes.body.settings)
+    expect(settings.content?.texts).toEqual(texts)
+    expect(settings.content?.images.about).toMatchObject({ assetId: ownImage, alt: '配图 about', src: expect.stringContaining('storage.example') })
+    expect(tables.site_settings[0].seo.existing_seo).toBe('preserved')
+  })
   it('writes asset references, preserves existing SEO, and renews URLs on public reads', async () => {
     const res = response()
     await settingsHandler({ method: 'PUT', body: { ...basic, heroAssetId: ownImage, heroAlt: '海岸首屏', content: { texts: { 'home.heroTitle': { zh: '中文', en: 'English' } }, images: { portrait: { assetId: ownImage, src: 'https://old.example/expiring', alt: '肖像' } } } } } as any, res)
