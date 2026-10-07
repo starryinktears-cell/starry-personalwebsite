@@ -2,19 +2,20 @@ import { Upload } from 'tus-js-client'
 import type { Asset } from './types'
 import { apiRequest, demoMode, normalizeAsset } from './portfolioApi'
 import { supabase, supabaseUrl, getSupabaseSessionToken } from './supabase'
-import { isAllowedMedia } from './validation'
+import { isAllowedMedia, maxMediaBytes } from './validation'
+import { serializeDemoMedia, storeDemoMedia } from './demoMedia'
 
 export async function uploadMedia(file: File, onProgress: (percent: number) => void): Promise<Asset> {
+  if (file.size > maxMediaBytes) throw new Error(`媒体文件不能超过 ${Math.round(maxMediaBytes / 1024 / 1024)} MB。`)
   if (!isAllowedMedia(file)) throw new Error('文件类型或大小不符合要求。')
   const alt = file.name.replace(/\.[^.]+$/, '')
   if (demoMode) {
-    // Persist small demo images across page refreshes; blobs are document-scoped.
-    if (file.size > 2 * 1024 * 1024) throw new Error('本地演示仅保存 2 MB 以下的媒体；大文件需要配置真实 Supabase。')
-    const src = await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = reject; reader.readAsDataURL(file) })
-    onProgress(100)
-    const asset = normalizeAsset({ id: crypto.randomUUID(), kind: file.type.startsWith('video/') ? 'video' : 'image', name: file.name, src, alt, mime_type: file.type, byte_size: file.size, status: 'ready' })
+    const id = crypto.randomUUID()
+    const src = await storeDemoMedia(id, file, onProgress)
+    const asset = normalizeAsset({ id, kind: file.type.startsWith('video/') ? 'video' : 'image', name: file.name, src, alt, mime_type: file.type, byte_size: file.size, status: 'ready' })
     const stored = JSON.parse(localStorage.getItem('studio-demo-assets') ?? '[]') as Asset[]
-    localStorage.setItem('studio-demo-assets', JSON.stringify([asset, ...stored]))
+    localStorage.setItem('studio-demo-assets', serializeDemoMedia([asset, ...stored]))
+    onProgress(100)
     return asset
   }
   const accessToken = await getSupabaseSessionToken()

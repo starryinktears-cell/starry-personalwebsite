@@ -2,6 +2,7 @@
 import type { Asset, Inquiry, Project, SiteSettings } from './types'
 import { inquiries as seedInquiries, projects as seedProjects, siteSettings as seedSettings } from './mockData'
 import { supabase } from './supabase'
+import { resolveDemoMedia, serializeDemoMedia } from './demoMedia'
 
 export const demoMode = !supabase
 
@@ -79,6 +80,7 @@ export function normalizeSettings(raw: any): SiteSettings {
     heroAlt: raw?.heroAlt ?? raw?.hero_alt ?? '',
     content: raw?.content ?? { texts: {}, images: {} },
     accent: raw?.accent ?? seedSettings.accent,
+    theme: raw?.theme ?? raw?.seo?.theme,
     socialLinks: Array.isArray(raw?.socialLinks) ? raw.socialLinks : (Array.isArray(raw?.social_links) ? raw.social_links : seedSettings.socialLinks),
   }
 }
@@ -91,7 +93,7 @@ function readDemo<T>(key: string, fallback: T): T {
 }
 
 function writeDemo<T>(key: string, value: T) {
-  localStorage.setItem(`studio-demo-${key}`, JSON.stringify(value))
+  localStorage.setItem(`studio-demo-${key}`, serializeDemoMedia(value))
   localStorage.setItem('studio-content-updated', String(Date.now()))
 }
 
@@ -119,7 +121,13 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
 }
 
 export async function loadPublicData() {
-  if (demoMode) return { projects: readDemo('projects', seedProjects).filter(project => project.status === 'published').sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)), settings: normalizeSettings(readDemo('settings', seedSettings)) }
+  if (demoMode) {
+    const [projects, settings] = await Promise.all([
+      resolveDemoMedia(readDemo('projects', seedProjects).filter(project => project.status === 'published').sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))),
+      resolveDemoMedia(readDemo('settings', seedSettings)),
+    ])
+    return { projects, settings: normalizeSettings(settings) }
+  }
   try {
     const payload = await apiRequest<{ projects?: any[]; settings?: any }>('/api/projects')
     return { projects: (payload.projects ?? []).map(normalizeProject), settings: normalizeSettings(payload.settings) }
@@ -127,7 +135,10 @@ export async function loadPublicData() {
 }
 
 export async function loadAdminData() {
-  if (demoMode) return { projects: readDemo('projects', seedProjects), inquiries: readDemo('inquiries', seedInquiries), settings: normalizeSettings(readDemo('settings', seedSettings)) }
+  if (demoMode) {
+    const [projects, settings] = await Promise.all([resolveDemoMedia(readDemo('projects', seedProjects)), resolveDemoMedia(readDemo('settings', seedSettings))])
+    return { projects, inquiries: readDemo('inquiries', seedInquiries), settings: normalizeSettings(settings) }
+  }
   const [projectPayload, inquiryPayload, settingsPayload] = await Promise.all([
     apiRequest<{ projects: any[] }>('/api/admin/projects'),
     apiRequest<{ inquiries: any[] }>('/api/admin/inquiries'),
@@ -162,7 +173,7 @@ export async function saveSettings(settings: SiteSettings) {
 export async function loadMediaLibrary(): Promise<Asset[]> {
   if (demoMode) {
     const attached = readDemo('projects', seedProjects).flatMap(project => project.assets)
-    return [...new Map([...readDemo<Asset[]>('assets', []), ...attached].map(asset => [asset.id, asset])).values()]
+    return resolveDemoMedia([...new Map([...readDemo<Asset[]>('assets', []), ...attached].map(asset => [asset.id, asset])).values()])
   }
   const payload = await apiRequest<{ assets: unknown[] }>('/api/admin/assets')
   return payload.assets.map(normalizeAsset)

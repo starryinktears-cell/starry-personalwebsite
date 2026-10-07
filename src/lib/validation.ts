@@ -13,7 +13,7 @@ export const validateProjectForPublish = (project: Project): string[] => {
   return errors
 }
 
-export const maxMediaBytes = Math.min(2 * 1024 * 1024 * 1024, Math.max(1, Number(import.meta.env.VITE_MAX_MEDIA_BYTES) || 50 * 1024 * 1024))
+export const maxMediaBytes = Math.min(5 * 1024 * 1024, Math.max(1, Number(import.meta.env.VITE_MAX_MEDIA_BYTES) || 5 * 1024 * 1024))
 
 export const isAllowedMedia = (file: File) => {
   const allowed = ['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/quicktime']

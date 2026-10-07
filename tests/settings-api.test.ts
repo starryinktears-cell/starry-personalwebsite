@@ -53,6 +53,22 @@ beforeEach(() => {
 })
 
 describe('Node settings API and public read contract (mock database)', () => {
+  it('persists theme settings through the owner-scoped JSONB write and public read, including older clients', async () => {
+    const theme = { footerColor: '#d2c5be', followHero: true }
+    const res = response()
+    await settingsHandler({ method: 'PUT', body: { ...basic, theme } } as any, res)
+    expect(res.code).toBe(200)
+    expect(tables.site_settings[0].seo).toMatchObject({ existing_seo: 'preserved', theme })
+    const publicRes = response()
+    await publicHandler({ method: 'GET' } as any, publicRes)
+    expect(normalizeSettings(publicRes.body.settings).theme).toEqual(theme)
+    await settingsHandler({ method: 'PUT', body: basic } as any, response())
+    expect(tables.site_settings[0].seo.theme).toEqual(theme)
+    const invalid = response()
+    await settingsHandler({ method: 'PUT', body: { ...basic, theme: { footerColor: 'url(https://invalid)' } } } as any, invalid)
+    expect(invalid.code).toBe(400)
+    expect(tables.site_settings[0].seo.theme).toEqual(theme)
+  })
   it('round trips the full page catalog and all screenshot image slots through the existing JSONB contract', async () => {
     const texts = Object.fromEntries(Object.entries(editableTexts).map(([key, value]) => [key, { en: value.en, zh: value.zh }]))
     texts['services.item.0.deliverables'] = { zh: '创意方案\n成片交付', en: 'Proposal\nFinal film' }

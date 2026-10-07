@@ -103,13 +103,13 @@ export const editableTexts: Record<string, { en: string; zh: string; group: stri
     "group": "关于"
   },
   "AboutPage.92bac68a": {
-    "en": "I’m a photographer and filmmaker based in Shanghai, creating images and moving stories around people, place and our shared environment. My work lives at the intersection of documentary truth and poetic imagination.",
-    "zh": "我是一名驻上海的摄影师与影像创作者，围绕人与地方以及我们共同的环境，创作图片与动态故事。我的作品位于纪实真实与诗意想象的交汇处。",
+    "en": "I’m a photographer and filmmaker based in Shenzhen, creating images and moving stories around people, place and our shared environment. My work lives at the intersection of documentary truth and poetic imagination.",
+    "zh": "我是一名驻深圳的摄影师与影像创作者，围绕人与地方以及我们共同的环境，创作图片与动态故事。我的作品位于纪实真实与诗意想象的交汇处。",
     "group": "关于"
   },
   "AboutPage.9bbb81cf": {
-    "en": "SHANGHAI / CHINA — AVAILABLE FOR SELECT COMMISSIONS",
-    "zh": "中国 / 上海 — 接受精选项目合作",
+    "en": "SHENZHEN / CHINA — AVAILABLE FOR SELECT COMMISSIONS",
+    "zh": "中国 / 深圳 — 接受精选项目合作",
     "group": "关于"
   },
   "AboutPage.47c6b96c": {
@@ -233,8 +233,8 @@ export const editableTexts: Record<string, { en: string; zh: string; group: stri
     "group": "首页"
   },
   "site.location": {
-    "en": "SHANGHAI · REYKJAVÍK",
-    "zh": "上海 · 雷克雅未克",
+    "en": "SHENZHEN",
+    "zh": "深圳",
     "group": "全站"
   },
   "site.marquee": {
@@ -246,14 +246,24 @@ export const editableTexts: Record<string, { en: string; zh: string; group: stri
 
 // The editor and public pages share these keys; never key content by its current title.
 const addText = (key: string, en: string, zh: string, group: string) => { editableTexts[key] = { en, zh, group } }
-addText('site.clockCity', 'REYKJAVÍK', 'REYKJAVÍK', '全站')
-addText('site.clockZone', 'GMT', 'GMT', '全站')
+addText('site.clockCity', 'SHENZHEN', '深圳', '全站')
+addText('site.clockZone', 'GMT+8', 'GMT+8', '全站')
+addText('site.clockOffset', '+08:00', '+08:00', '联系')
+addText('contact.eyebrow', 'GET IN TOUCH', '联系合作', '联系')
+addText('contact.title', 'LET’S WORK TOGETHER', '让我们一起创作', '联系')
+addText('contact.intro', 'Have a project in mind? Tell me what you are making, where it lives and what you want people to feel.', '有项目想法吗？告诉我你在创作什么、它将发生在哪里，以及你希望人们感受到什么。', '联系')
+addText('contact.timeLabel', 'TIME / COORDINATES', '时间 / 坐标', '联系')
+addText('contact.city', 'SHENZHEN', '深圳', '联系')
+addText('contact.coordinates', '22°33′ N · 114°03′ E', '22°33′ N · 114°03′ E', '联系')
+addText('contact.timeZoneLabel', 'GMT+8', 'GMT+8', '联系')
+addText('contact.directLabel', 'DIRECT', '直接联系', '联系')
+addText('contact.followLabel', 'FOLLOW', '关注', '联系')
 addText('site.nav.work', 'WORK', '作品', '全站')
 addText('site.nav.about', 'ABOUT', '关于', '全站')
 addText('site.nav.services', 'SERVICES', '服务', '全站')
 addText('site.nav.contact', 'CONTACT', '联系', '全站')
 addText('home.scene', 'SCENE 01 — TAKE 03', 'SCENE 01 — TAKE 03', '首页')
-addText('home.coordinates', 'N 64°08′ · W 21°56′', 'N 64°08′ · W 21°56′', '首页')
+addText('home.coordinates', 'N 22°33′ · E 114°03′', 'N 22°33′ · E 114°03′', '首页')
 addText('home.exposure', 'ƒ/2.8 · 1/250 · ISO 400', 'ƒ/2.8 · 1/250 · ISO 400', '首页')
 addText('home.frame', '24 FPS — 00:00:24', '24 FPS — 00:00:24', '首页')
 addText('home.scroll', 'SCROLL', '向下浏览', '首页')
@@ -288,7 +298,9 @@ timelineDefaults.forEach(([year, en, zh], index) => {
 
 export const contentPages = ['首页', '关于', '服务', '联系', '全站', '页脚'] as const
 export type ContentPage = typeof contentPages[number]
-type Section = { page: ContentPage; title: string; fields: { key: string; label: string }[]; images: string[] }
+export type ContentSection = { page: ContentPage; title: string; fields: { key: string; label: string }[]; images: string[] }
+type Section = ContentSection
+export const contentSectionId = (section: ContentSection) => section.fields[0]?.key ?? section.images[0]
 const fields = (entries: [string, string][]) => entries.map(([key, label]) => ({ key, label }))
 export const contentSections: Section[] = [
   { page: '首页', title: '首屏', images: ['hero'], fields: fields([
@@ -304,7 +316,9 @@ export const contentSections: Section[] = [
   { page: '服务', title: '服务页介绍', images: ['serviceA', 'serviceB'], fields: fields([['ServicesPage.f66a82e4', '区块标识'], ['ServicesPage.72318c38', '页面大标题'], ['ServicesPage.c4a681de', '页面简介']]) },
   ...[0, 1, 2, 3].map((index): Section => ({ page: '服务', title: `服务 ${index + 1} / ${serviceDefaults[index][1]}`, images: [], fields: fields([[`services.item.${index}.title`, '服务标题'], [`services.item.${index}.description`, '服务说明'], [`services.item.${index}.deliverables`, '交付清单（每行一项）']]) })),
   { page: '服务', title: '合作流程', images: [], fields: fields([['ServicesPage.b2bb0035', '流程区块标题'], ...[0, 1, 2, 3].flatMap(index => [[`services.process.${index}.title`, `步骤 ${index + 1} 标题`], [`services.process.${index}.description`, `步骤 ${index + 1} 说明`]] as [string, string][]), ['ServicesPage.a08934e1', '合作按钮']]) },
+  { page: '联系', title: '联系页介绍', fields: fields([['contact.eyebrow', '区块标识'], ['contact.title', '页面大标题'], ['contact.intro', '页面简介']]), images: [] },
   { page: '联系', title: '联系页配图', fields: [], images: ['contact'] },
+  { page: '联系', title: '地点与时间', fields: fields([['contact.timeLabel', '时间与坐标标题'], ['contact.city', '城市 / 地址'], ['contact.coordinates', '展示坐标'], ['site.clockOffset', '全站时钟 UTC 时差（如 +08:00）'], ['contact.timeZoneLabel', '时区文字'], ['contact.directLabel', '直接联系标题'], ['contact.followLabel', '社交链接标题']]), images: [] },
   { page: '全站', title: '导航状态', fields: fields([['site.nav.work', '作品导航'], ['site.nav.about', '关于导航'], ['site.nav.services', '服务导航'], ['site.nav.contact', '联系导航'], ['PublicLayout.8c8738c1', '合作状态'], ['site.clockCity', '时钟城市名称'], ['site.clockZone', '时钟旁标签']]), images: [] },
   { page: '页脚', title: '页脚文字', fields: fields([['Footer.ab353dfd', '联系按钮'], ['Footer.48f0c1a7', '返回顶部按钮'], ['Footer.e7ef3aca', '地点标识'], ['site.location', '地点'], ['Footer.0137b9ad', '社交标识'], ['Footer.fc8e4190', '版权说明'], ['Footer.2f158034', '隐私链接'], ['site.marquee', '滚动文字']]), images: [] },
 ]

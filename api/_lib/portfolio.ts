@@ -71,5 +71,5 @@ export async function serializeSettings(raw: any, client: SupabaseClient) {
     for (const asset of data ?? []) images[asset.id] = await signedAsset(client, asset)
   }
   const resolved = Object.fromEntries(Object.entries(content.images ?? {}).map(([key, image]: [string, any]) => [key, image.assetId ? { ...image, src: images[image.assetId]?.src ?? '' } : image]))
-  return { site_name: raw.site_name, short_bio: raw.short_bio ?? '', contact_email: raw.contact_email ?? '', hero_title: raw.hero_title ?? '', hero_subtitle: raw.hero_subtitle ?? '', accent: raw.accent ?? '#626a4c', social_links: raw.social_links ?? [], hero_asset_id: raw.hero_asset_id ?? null, hero_alt: seo.hero_alt ?? '', hero_image: raw.hero_asset_id ? images[raw.hero_asset_id]?.src ?? '' : seo.hero_image ?? '', content: { texts: content.texts ?? {}, images: resolved } }
+  return { theme: seo.theme, site_name: raw.site_name, short_bio: raw.short_bio ?? '', contact_email: raw.contact_email ?? '', hero_title: raw.hero_title ?? '', hero_subtitle: raw.hero_subtitle ?? '', accent: raw.accent ?? '#626a4c', social_links: raw.social_links ?? [], hero_asset_id: raw.hero_asset_id ?? null, hero_alt: seo.hero_alt ?? '', hero_image: raw.hero_asset_id ? images[raw.hero_asset_id]?.src ?? '' : seo.hero_image ?? '', content: { texts: content.texts ?? {}, images: resolved } }
 }

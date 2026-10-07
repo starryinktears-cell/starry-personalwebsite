@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { authenticateRequest, json } from '../_lib/supabase.js'
 
-const maxMediaBytes = Math.min(2 * 1024 * 1024 * 1024, Math.max(1, Number(process.env.MAX_MEDIA_BYTES) || 50 * 1024 * 1024))
+const maxMediaBytes = Math.min(5 * 1024 * 1024, Math.max(1, Number(process.env.MAX_MEDIA_BYTES) || 5 * 1024 * 1024))
 const schema = z.object({ filename: z.string().trim().min(1).max(180), contentType: z.string().regex(/^(image\/(jpeg|png|webp)|video\/(mp4|quicktime))$/), size: z.number().int().positive().max(maxMediaBytes) })
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

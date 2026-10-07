@@ -69,6 +69,7 @@ export type SiteSettings = {
   heroAlt?: string
   content?: SiteContent
   accent: string
+  theme?: { footerColor?: string; followHero?: boolean }
   socialLinks: { label: string; href: string }[]
 }
 

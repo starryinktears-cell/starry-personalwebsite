@@ -77,6 +77,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .menu-curtain[data-open='true'] a { opacity: 1; transform: translateY(0); }
 .press-scale:active { transform: scale(.97); }
 .custom-scrollbar { scrollbar-color: var(--olive) var(--paper-2); scrollbar-width: thin; }
+.bg-olive.text-white, .bg-olive.text-paper { color: var(--accent-on, #fff); }
+.bg-footer .eyebrow { color: rgb(var(--footer-ink-rgb, 255 255 255) / .7); }
+.admin-sidebar .eyebrow { color: rgb(255 255 255 / .6); }
+
+@media (min-width: 768px) {
+  .admin-sidebar { position: sticky; top: 0; height: 100svh; overflow-y: auto; }
+}
 
 @keyframes grain-shift { 0% { transform: translate(0, 0); } 25% { transform: translate(1%, -1%); } 50% { transform: translate(-1%, 1%); } 75% { transform: translate(1%, 1%); } 100% { transform: translate(0, 0); } }
 @keyframes reveal-image { to { clip-path: inset(0); } }
@@ -95,3 +102,29 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 }
 
 @media (pointer: coarse) { .magnetic-button { transform: none !important; } }
+
+/* Settings navigation and draft preview are isolated from the public layout. */
+.settings-page-tabs { scrollbar-width: thin; }
+.settings-section-tabs { top: 72px; }
+.settings-workspace { display: grid; gap: 24px; align-items: start; scroll-margin-top: 148px; }
+.settings-editor-fields { container-type: inline-size; }
+.settings-preview-panel { position: sticky; top: 148px; }
+.settings-preview-viewport { overflow: auto; max-height: min(620px, calc(100svh - 310px)); min-height: 160px; }
+.settings-preview-canvas { width: 1120px; overflow: hidden; }
+.settings-preview-canvas [hidden] { display: none !important; }
+.settings-preview-canvas .min-h-\[100svh\] { min-height: 760px; }
+.settings-preview-canvas > footer { margin-top: 0; }
+.settings-preview-canvas > div > section:first-of-type { margin-top: 0; }
+.settings-preview-canvas .reveal-text { opacity: 1; transform: none; }
+.settings-preview-canvas .draw-line { transform: scaleX(1); }
+.settings-preview-canvas *, .settings-preview-canvas *::before, .settings-preview-canvas *::after { animation: none !important; transition: none !important; }
+@container (min-width: 560px) {
+  .settings-language-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1100px) {
+  .settings-workspace { grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr); }
+}
+@media (max-width: 1099px) {
+  .settings-preview-panel { position: static; grid-row: 1; }
+  .settings-preview-viewport { max-height: 360px; }
+}

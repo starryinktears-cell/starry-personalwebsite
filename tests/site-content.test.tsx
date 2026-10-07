@@ -1,14 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import App from '../src/App'
 import { imageVariants, contentSections, contentText } from '../src/lib/siteContent'
 import { loadAdminData, loadPublicData, projectPayload, saveProject } from '../src/lib/portfolioApi'
 import { projects, siteSettings } from '../src/lib/mockData'
+import { extractHeroPalette } from '../src/lib/theme'
 
 vi.mock('../src/lib/motion-runtime', () => ({ MotionRuntime: () => null }))
+vi.mock('../src/lib/theme', async importOriginal => ({ ...await importOriginal<typeof import('../src/lib/theme')>(), extractHeroPalette: vi.fn().mockResolvedValue({ accent: '#728793', footerColor: '#434f57' }) }))
 
 beforeEach(() => {
+  vi.mocked(extractHeroPalette).mockResolvedValue({ accent: '#728793', footerColor: '#434f57' })
   localStorage.clear(); sessionStorage.clear()
   localStorage.setItem('studio-session', '1')
   sessionStorage.setItem('studio-preloader-seen', '1')
@@ -16,9 +19,93 @@ beforeEach(() => {
   window.scrollTo = vi.fn()
   globalThis.IntersectionObserver = class { observe() {} disconnect() {} unobserve() {} } as unknown as typeof IntersectionObserver
 })
-afterEach(() => { cleanup(); vi.restoreAllMocks() })
+afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks() })
 
 describe('admin to public content round trip', () => {
+  it('saves editable contact copy, Shenzhen location, coordinates and timezone for the real contact page', async () => {
+    const view = render(<MemoryRouter initialEntries={['/admin/settings']}><App /></MemoryRouter>)
+    await screen.findByLabelText('首屏 · 首屏大标题（中文）')
+    fireEvent.click(screen.getByRole('button', { name: '联系内容' }))
+    fireEvent.change(screen.getByLabelText('联系页介绍 · 页面大标题（中文）'), { target: { value: '在深圳一起创作' } })
+    fireEvent.change(screen.getByLabelText('联系页介绍 · 页面简介（中文）'), { target: { value: '告诉我你想讲述的故事。' } })
+    expect(within(screen.getByRole('complementary', { name: '区块预览' })).getByRole('heading', { name: '在深圳一起创作' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('tab', { name: '地点与时间' }))
+    expect(screen.getByLabelText('地点与时间 · 城市 / 地址（中文）')).toHaveValue('深圳')
+    fireEvent.change(screen.getByLabelText('地点与时间 · 城市 / 地址（中文）'), { target: { value: '深圳 · 南山区' } })
+    fireEvent.change(screen.getByLabelText('地点与时间 · 展示坐标（中文）'), { target: { value: 'N 22°33′ · E 114°03′' } })
+    fireEvent.click(screen.getByRole('button', { name: '保存修改' }))
+    await screen.findByText('设置已保存，打开或刷新主站即可查看。')
+    view.unmount()
+    render(<MemoryRouter initialEntries={['/contact']}><App /></MemoryRouter>)
+    await screen.findByRole('heading', { name: '在深圳一起创作' })
+    expect(screen.getByText('告诉我你想讲述的故事。')).toBeInTheDocument()
+    expect(screen.getByText(/深圳 · 南山区/)).toHaveTextContent('N 22°33′ · E 114°03′')
+    expect(screen.getByRole('button', { name: '发送咨询' })).toBeInTheDocument()
+    expect(screen.queryByText(/SHANGHAI/)).not.toBeInTheDocument()
+  })
+
+  it('saves Morandi colors and an independent footer color, then resets to the original green', async () => {
+    const view = render(<MemoryRouter initialEntries={['/admin/settings']}><App /></MemoryRouter>)
+    await screen.findByLabelText('主色')
+    // Native <details> is opened so the same controls a real user sees are exercised.
+    fireEvent.click(screen.getByText('品牌、联系与共用字段', { selector: 'summary' }))
+    fireEvent.click(screen.getByRole('button', { name: '雾蓝' }))
+    expect(screen.getByLabelText('主色')).toHaveValue('#728793')
+    expect(screen.getByLabelText('更换首页头图时，自动更新主色与页脚配色')).not.toBeChecked()
+    fireEvent.change(screen.getByLabelText('页脚背景色'), { target: { value: '#d2c5be' } })
+    fireEvent.click(screen.getByRole('button', { name: '页脚内容' }))
+    expect(screen.getByRole('complementary', { name: '区块预览' }).querySelector('[inert]')).toHaveStyle({ '--footer-rgb': '210 197 190' })
+    fireEvent.click(screen.getByRole('button', { name: '保存修改' }))
+    await screen.findByText('设置已保存，打开或刷新主站即可查看。')
+    expect((await loadPublicData()).settings.theme?.footerColor).toBe('#d2c5be')
+    expect(document.documentElement.style.getPropertyValue('--olive-deep')).toBe('#435057')
+    fireEvent.click(screen.getByRole('button', { name: '重置为原始墨绿' }))
+    expect(screen.getByLabelText('主色')).toHaveValue('#626a4c')
+    expect(screen.getByLabelText('页脚背景色')).toHaveValue('#3a3f2d')
+    view.unmount()
+  })
+
+  it('keeps manual colors when a failed or stale hero extraction finishes', async () => {
+    let finish!: (value: { accent: string; footerColor: string }) => void
+    vi.mocked(extractHeroPalette).mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+    render(<MemoryRouter initialEntries={['/admin/settings']}><App /></MemoryRouter>)
+    await screen.findByLabelText('主色')
+    fireEvent.change(screen.getByLabelText('图片地址（使用私有媒体时请选择下方媒体库）'), { target: { value: '/images/window.webp' } })
+    await waitFor(() => expect(extractHeroPalette).toHaveBeenCalledWith('/images/window.webp'))
+    fireEvent.change(screen.getByLabelText('主色'), { target: { value: '#9a7d83' } })
+    await act(async () => { finish({ accent: '#123456', footerColor: '#102030' }) })
+    expect(screen.getByLabelText('主色')).toHaveValue('#9a7d83')
+    expect(screen.getByRole('button', { name: '保存修改' })).toBeEnabled()
+    vi.mocked(extractHeroPalette).mockRejectedValueOnce(new Error('此图片不允许跨域取色，已保留原配色。'))
+    fireEvent.click(screen.getByText('品牌、联系与共用字段', { selector: 'summary' }))
+    fireEvent.click(screen.getByRole('button', { name: '从当前头图取色' }))
+    await screen.findByText('此图片不允许跨域取色，已保留原配色。')
+    expect(screen.getByLabelText('主色')).toHaveValue('#9a7d83')
+    expect(screen.getByRole('button', { name: '保存修改' })).toBeEnabled()
+  })
+
+  it('never navigates between projects on scrolling, visibility or a timer; explicit navigation still works', async () => {
+    const callbacks: IntersectionObserverCallback[] = []
+    globalThis.IntersectionObserver = class {
+      constructor(callback: IntersectionObserverCallback) { callbacks.push(callback) }
+      observe() {} disconnect() {} unobserve() {}
+    } as unknown as typeof IntersectionObserver
+    window.matchMedia = vi.fn().mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })
+    render(<MemoryRouter initialEntries={['/work/field-notes']}><App /></MemoryRouter>)
+    await screen.findByRole('heading', { name: 'Field Notes' })
+    vi.useFakeTimers()
+    act(() => {
+      fireEvent.scroll(window); fireEvent.wheel(window, { deltaY: 1500 })
+      callbacks.forEach(callback => callback([{ isIntersecting: true, intersectionRatio: 1 } as IntersectionObserverEntry], {} as IntersectionObserver))
+      vi.advanceTimersByTime(5000)
+    })
+    expect(screen.getByRole('heading', { name: 'Field Notes' })).toBeInTheDocument()
+    vi.useRealTimers()
+    const next = screen.getByRole('link', { name: /下一个项目/ })
+    const nextTitle = projects.find(project => `/work/${project.slug}` === next.getAttribute('href'))!.title
+    fireEvent.click(next)
+    await screen.findByRole('heading', { name: nextTitle })
+  })
   it('saves brand, hero, home manifesto and image and renders the same values publicly after refresh', async () => {
     localStorage.setItem('studio-demo-settings', JSON.stringify({ ...siteSettings, content: { texts: { 'home.heroTitle': { en: 'Old English override', zh: '旧中文覆盖值' } }, images: {} } }))
     const view = render(<MemoryRouter initialEntries={['/admin/settings']}><App /></MemoryRouter>)
@@ -27,6 +114,7 @@ describe('admin to public content round trip', () => {
     fireEvent.change(screen.getByLabelText('首屏标题（中英文共用）'), { target: { value: '我的真实首页' } })
     fireEvent.change(screen.getByLabelText('图片地址（使用私有媒体时请选择下方媒体库）'), { target: { value: 'https://images.example.com/custom.webp' } })
     fireEvent.change(screen.getByLabelText('图片描述 / Alt'), { target: { value: '我的海岸封面' } })
+    fireEvent.click(screen.getByRole('tab', { name: '宣言与统计' }))
     fireEvent.change(screen.getByLabelText('宣言与统计 · 宣言（中文）'), { target: { value: '这是后台写入的宣言。' } })
     fireEvent.change(screen.getByLabelText('主色'), { target: { value: '#7caed5' } })
     fireEvent.click(screen.getByRole('button', { name: '保存修改' }))
@@ -94,12 +182,48 @@ describe('admin to public content round trip', () => {
     const file = new File(['image-content'], 'demo-photo.png', { type: 'image/png' })
     fireEvent.change(screen.getByLabelText('上传并替换图片'), { target: { files: [file] } })
     await screen.findByText('图片已上传并选中；保存修改后主站生效。')
+    await waitFor(() => expect(screen.getByRole('button', { name: '保存修改' })).toBeEnabled())
     fireEvent.click(screen.getByRole('button', { name: '保存修改' }))
     await screen.findByText('设置已保存，打开或刷新主站即可查看。')
     view.unmount()
     render(<MemoryRouter><App /></MemoryRouter>)
-    await waitFor(() => expect(screen.getByAltText('demo-photo')).toHaveAttribute('src', expect.stringContaining('data:image/png;base64,')))
+    await waitFor(() => expect(screen.getByAltText('demo-photo')).toHaveAttribute('src', expect.stringContaining('blob:')))
     expect(screen.getByAltText('demo-photo')).not.toHaveAttribute('srcset')
+  })
+
+  it('uploads a portrait above 2 MB, saves only its reference and shows it on About after remount', async () => {
+    const view = render(<MemoryRouter initialEntries={['/admin/settings']}><App /></MemoryRouter>)
+    await screen.findByRole('button', { name: '关于内容' })
+    fireEvent.click(screen.getByRole('button', { name: '关于内容' }))
+    const file = new File([new Uint8Array(3 * 1024 * 1024)], 'large-portrait.jpg', { type: 'image/jpeg' })
+    fireEvent.change(screen.getByLabelText('上传并替换图片'), { target: { files: [file] } })
+    await screen.findByText('图片已上传并选中；保存修改后主站生效。')
+    expect(screen.getByLabelText('从我的媒体库选择')).toHaveTextContent('large-portrait.jpg')
+    fireEvent.click(screen.getByRole('button', { name: '保存修改' }))
+    await screen.findByText('设置已保存，打开或刷新主站即可查看。')
+    const stored = localStorage.getItem('studio-demo-settings')!
+    expect(stored).toContain('studio-demo-media:')
+    expect(stored).not.toContain('blob:')
+    expect(stored.length).toBeLessThan(3000)
+    view.unmount()
+    render(<MemoryRouter initialEntries={['/about']}><App /></MemoryRouter>)
+    await waitFor(() => expect(screen.getByAltText('large-portrait')).toHaveAttribute('src', expect.stringContaining('blob:')))
+    expect(screen.getByAltText('large-portrait')).not.toHaveAttribute('srcset')
+  })
+
+  it('shows upload failures next to the portrait controls without replacing the existing image', async () => {
+    render(<MemoryRouter initialEntries={['/admin/settings']}><App /></MemoryRouter>)
+    await screen.findByRole('button', { name: '关于内容' })
+    fireEvent.click(screen.getByRole('button', { name: '关于内容' }))
+    fireEvent.change(screen.getByLabelText('上传并替换图片'), { target: { files: [new File([], 'empty.jpg', { type: 'image/jpeg' })] } })
+    expect(await screen.findByRole('alert')).toHaveTextContent('文件类型或大小不符合要求。')
+    expect(screen.getByRole('button', { name: '重试上传' })).toBeEnabled()
+    expect(screen.getByLabelText('图片地址（使用私有媒体时请选择下方媒体库）')).toHaveValue('/images/about.webp')
+    fireEvent.change(screen.getByLabelText('上传并替换图片'), { target: { files: [new File(['replacement'], 'retry.jpg', { type: 'image/jpeg' })] } })
+    await screen.findByText('图片已上传并选中；保存修改后主站生效。')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '重试上传' })).not.toBeInTheDocument()
+    expect((screen.getByLabelText('图片地址（使用私有媒体时请选择下方媒体库）') as HTMLInputElement).value).toMatch(/^blob:/)
   })
 
   it('never fabricates thumbnails for uploaded, external or unknown bundled files', () => {
@@ -117,6 +241,7 @@ describe('admin to public content round trip', () => {
     edit('首屏 · 首屏大标题（中文）', '我的中文首屏')
     edit('首屏 · 首屏大标题（English）', 'My English hero')
     edit('首屏 · 左上场记（中文）', '场景 / 我自己的故事')
+    fireEvent.click(screen.getByRole('tab', { name: '能力 1 / 摄影' }))
     edit('能力 1 / 摄影 · 能力标题（中文）', '肖像与城市')
     edit('能力 1 / 摄影 · 能力说明（中文）', '后台修改的能力说明')
     fireEvent.click(screen.getByRole('button', { name: '编辑 首页 / 摄影配图 2' }))
@@ -127,17 +252,22 @@ describe('admin to public content round trip', () => {
     edit('人物介绍 · 人物简介（中文）', '从后台编辑的中文个人介绍')
     edit('人物介绍 · 人物简介（English）', 'My edited biography')
     edit('人物介绍 · 介绍副标题（中文）', '以我的视角看世界')
+    fireEvent.click(screen.getByRole('tab', { name: '时间线与引言' }))
     edit('时间线与引言 · 经历 1 年份（中文）', '2019')
     edit('时间线与引言 · 经历 1 标题（中文）', '第一次出发')
+    fireEvent.click(screen.getByRole('tab', { name: '人物介绍' }))
     edit('图片地址（使用私有媒体时请选择下方媒体库）', 'https://example.com/my-portrait.jpg')
     edit('图片描述 / Alt', '我的肖像')
     fireEvent.click(screen.getByRole('button', { name: '服务内容' }))
+    fireEvent.click(screen.getByRole('tab', { name: '服务 1 / 品牌故事' }))
     edit('服务 1 / 品牌故事 · 服务标题（中文）', '品牌影像定制')
     edit('服务 1 / 品牌故事 · 服务标题（English）', 'Custom brand films')
     edit('服务 1 / 品牌故事 · 服务说明（中文）', '后台设置的服务说明')
     edit('服务 1 / 品牌故事 · 交付清单（每行一项）（中文）', '创意提案\n成片交付\n')
+    fireEvent.click(screen.getByRole('tab', { name: '合作流程' }))
     edit('合作流程 · 步骤 1 标题（中文）', '需求沟通')
     edit('合作流程 · 步骤 1 说明（中文）', '先了解真实需求')
+    fireEvent.click(screen.getByRole('tab', { name: '服务页介绍' }))
     fireEvent.click(screen.getByRole('button', { name: '编辑 服务 / 配图' }))
     edit('图片地址（使用私有媒体时请选择下方媒体库）', 'https://example.com/my-service.jpg')
     edit('图片描述 / Alt', '我的服务配图')
@@ -184,5 +314,75 @@ describe('admin to public content round trip', () => {
     const keys = contentSections.flatMap(section => section.fields.map(field => field.key))
     expect(new Set(keys).size).toBe(keys.length)
     expect(keys.length).toBeLessThanOrEqual(150)
+  })
+
+  it('switches service modules with the keyboard, previews the selected open item, and keeps unsaved bilingual drafts', async () => {
+    render(<MemoryRouter initialEntries={['/admin/settings']}><App /></MemoryRouter>)
+    await screen.findByLabelText('首屏 · 首屏大标题（中文）')
+    fireEvent.click(screen.getByRole('button', { name: '服务内容' }))
+    fireEvent.keyDown(screen.getByRole('tab', { name: '服务页介绍' }), { key: 'ArrowRight' })
+    expect(screen.getByRole('tabpanel')).toHaveAccessibleName('服务 1 / 品牌故事')
+    const title = screen.getByLabelText('服务 1 / 品牌故事 · 服务标题（中文）')
+    fireEvent.change(title, { target: { value: '尚未保存的品牌影像' } })
+    fireEvent.change(screen.getByLabelText('服务 1 / 品牌故事 · 服务标题（English）'), { target: { value: 'Unsaved brand films' } })
+    const preview = () => screen.getByRole('complementary', { name: '区块预览' })
+    const previewTitle = within(preview()).getByText('尚未保存的品牌影像')
+    expect(previewTitle.closest('button')).toHaveAttribute('aria-expanded', 'true')
+    expect(previewTitle.closest('[hidden]')).toBeNull()
+    expect(previewTitle.closest('[inert]')).not.toBeNull()
+    fireEvent.keyDown(screen.getByRole('tab', { name: '服务 1 / 品牌故事' }), { key: 'ArrowRight' })
+    expect(screen.getByRole('tabpanel')).toHaveAccessibleName('服务 2 / 编辑内容')
+    expect(within(preview()).getByText('尚未保存的品牌影像').closest('[hidden]')).not.toBeNull()
+    expect(within(preview()).getByText('编辑内容').closest('button')).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.keyDown(screen.getByRole('tab', { name: '服务 2 / 编辑内容' }), { key: 'ArrowLeft' })
+    expect(screen.getByLabelText('服务 1 / 品牌故事 · 服务标题（中文）')).toHaveValue('尚未保存的品牌影像')
+    expect(screen.getByLabelText('服务 1 / 品牌故事 · 服务标题（English）')).toHaveValue('Unsaved brand films')
+    expect((await loadPublicData()).settings.content?.texts?.['services.item.0.title']?.zh).not.toBe('尚未保存的品牌影像')
+    fireEvent.keyDown(screen.getByRole('tab', { name: '服务 1 / 品牌故事' }), { key: 'End' })
+    expect(screen.getByRole('tabpanel')).toHaveAccessibleName('其他兼容文案')
+    fireEvent.keyDown(screen.getByRole('tab', { name: '其他兼容文案' }), { key: 'Home' })
+    expect(screen.getByRole('tabpanel')).toHaveAccessibleName('服务页介绍')
+    fireEvent.click(screen.getByRole('button', { name: '保存修改' }))
+    await screen.findByText('设置已保存，打开或刷新主站即可查看。')
+    expect((await loadPublicData()).settings.content?.texts?.['services.item.0.title']).toEqual({ zh: '尚未保存的品牌影像', en: 'Unsaved brand films' })
+  })
+
+  it('keeps every existing content and image field accessible through one active module panel', async () => {
+    render(<MemoryRouter initialEntries={['/admin/settings']}><App /></MemoryRouter>)
+    await screen.findByLabelText('首屏 · 首屏大标题（中文）')
+    for (const section of contentSections) {
+      fireEvent.click(screen.getByRole('button', { name: `${section.page}内容` }))
+      fireEvent.click(screen.getByRole('tab', { name: section.title }))
+      expect(screen.getAllByRole('tabpanel')).toHaveLength(1)
+      const panel = within(screen.getByRole('tabpanel'))
+      expect(panel.getByRole('heading', { name: `${section.page} / ${section.title}` })).toBeInTheDocument()
+      for (const field of section.fields) {
+        expect(panel.getByLabelText(`${section.title} · ${field.label}（中文）`)).toBeInTheDocument()
+        expect(panel.getByLabelText(`${section.title} · ${field.label}（English）`)).toBeInTheDocument()
+      }
+      if (section.images.length) {
+        expect(panel.getByLabelText('编辑图片位置').querySelectorAll('option')).toHaveLength(section.images.length)
+        expect(panel.getByLabelText('上传并替换图片')).toBeInTheDocument()
+      }
+      expect(within(screen.getByRole('complementary', { name: '区块预览' })).getByText(`${section.page} / ${section.title}`)).toBeInTheDocument()
+    }
+  })
+
+  it('updates the selected capability image and draft accent in the preview without saving other settings', async () => {
+    render(<MemoryRouter initialEntries={['/admin/settings']}><App /></MemoryRouter>)
+    await screen.findByLabelText('首屏 · 首屏大标题（中文）')
+    fireEvent.click(screen.getByRole('tab', { name: '能力 2 / 影像与动态' }))
+    fireEvent.change(screen.getByLabelText('编辑图片位置'), { target: { value: 'mountainLake' } })
+    fireEvent.change(screen.getByLabelText('图片地址（使用私有媒体时请选择下方媒体库）'), { target: { value: '/images/window.webp' } })
+    fireEvent.change(screen.getByLabelText('图片描述 / Alt'), { target: { value: '当前模块替换图' } })
+    fireEvent.change(screen.getByLabelText('主色'), { target: { value: '#336699' } })
+    const preview = screen.getByRole('complementary', { name: '区块预览' })
+    expect(within(preview).getByAltText('当前模块替换图')).toHaveAttribute('src', '/images/window.webp')
+    expect(preview.querySelector('[inert]')).toHaveStyle({ '--olive': '#336699' })
+    expect(document.documentElement.style.getPropertyValue('--olive')).toBe(siteSettings.accent)
+    fireEvent.click(screen.getByRole('tab', { name: '首屏' }))
+    fireEvent.click(screen.getByRole('tab', { name: '能力 2 / 影像与动态' }))
+    fireEvent.change(screen.getByLabelText('编辑图片位置'), { target: { value: 'mountainLake' } })
+    expect(screen.getByLabelText('图片描述 / Alt')).toHaveValue('当前模块替换图')
   })
 })
