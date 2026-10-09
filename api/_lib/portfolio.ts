@@ -70,6 +70,14 @@ export async function serializeSettings(raw: any, client: SupabaseClient) {
     if (error) throw new Error('Unable to read site images')
     for (const asset of data ?? []) images[asset.id] = await signedAsset(client, asset)
   }
+  const videoIds = [...new Set(Object.values(content.videos ?? {}).map((video: any) => video.assetId).filter(Boolean))]
+  const videoAssets: Record<string, any> = {}
+  if (videoIds.length) {
+    const { data, error } = await client.from('assets').select('*').eq('owner_id', raw.owner_id).eq('kind', 'video').eq('status', 'ready').in('id', videoIds)
+    if (error) throw new Error('Unable to read site videos')
+    for (const asset of data ?? []) videoAssets[asset.id] = await signedAsset(client, asset)
+  }
+  const videos = Object.fromEntries(Object.entries(content.videos ?? {}).map(([key, video]: [string, any]) => [key, video.assetId ? { ...video, src: videoAssets[video.assetId]?.src ?? '' } : video]))
   const resolved = Object.fromEntries(Object.entries(content.images ?? {}).map(([key, image]: [string, any]) => [key, image.assetId ? { ...image, src: images[image.assetId]?.src ?? '' } : image]))
-  return { theme: seo.theme, site_name: raw.site_name, short_bio: raw.short_bio ?? '', contact_email: raw.contact_email ?? '', hero_title: raw.hero_title ?? '', hero_subtitle: raw.hero_subtitle ?? '', accent: raw.accent ?? '#626a4c', social_links: raw.social_links ?? [], hero_asset_id: raw.hero_asset_id ?? null, hero_alt: seo.hero_alt ?? '', hero_image: raw.hero_asset_id ? images[raw.hero_asset_id]?.src ?? '' : seo.hero_image ?? '', content: { texts: content.texts ?? {}, images: resolved } }
+  return { theme: seo.theme, site_name: raw.site_name, short_bio: raw.short_bio ?? '', contact_email: raw.contact_email ?? '', hero_title: raw.hero_title ?? '', hero_subtitle: raw.hero_subtitle ?? '', accent: raw.accent ?? '#626a4c', social_links: raw.social_links ?? [], hero_asset_id: raw.hero_asset_id ?? null, hero_alt: seo.hero_alt ?? '', hero_image: raw.hero_asset_id ? images[raw.hero_asset_id]?.src ?? '' : seo.hero_image ?? '', content: { heroSlides: content.heroSlides, experienceItems: content.experienceItems, customCases: content.customCases ?? [], texts: content.texts ?? {}, images: resolved, videos } }
 }

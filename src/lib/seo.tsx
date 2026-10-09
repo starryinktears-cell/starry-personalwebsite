@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom'
 import type { Project, SiteSettings } from './types'
 import { contentText } from './siteContent'
 import type { Language } from './i18n'
+import { getCaseDefinitions } from '../data/caseCatalog'
 
 const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin
 
@@ -41,6 +42,23 @@ export function RouteMeta({ projects = [], settings, language = 'zh' }: { projec
     if (settings) {
       title = title.replaceAll('Studio / 01', settings.siteName)
       if (pathname === '/') { title = `${settings.siteName} — ${contentText(settings, 'home.heroTitle', language)}`; description = settings.shortBio; image = settings.heroImage }
+      if (contentText(settings, 'cases.enabled', 'zh') === '1') {
+        const pages: Record<string, [string, string]> = {
+          '/work': ['cases.heading', 'cases.intro'],
+          '/about': ['AboutPage.491a3827', 'AboutPage.92bac68a'],
+          '/services': ['ServicesPage.f66a82e4', 'ServicesPage.c4a681de'],
+          '/contact': ['contact.title', 'contact.intro'],
+        }
+        const page = pages[pathname]
+        if (page) { title = `${contentText(settings, page[0], language)} | ${settings.siteName}`; description = contentText(settings, page[1], language) }
+      }
+      const study = getCaseDefinitions(settings).find(item => pathname === `/cases/${item.id}`)
+      if (study) {
+        const visible = contentText(settings, 'cases.enabled', 'zh') === '1' && contentText(settings, `case.${study.id}.visible`, 'zh') === '1'
+        title = `${visible ? contentText(settings, `case.${study.id}.title`, language) : (language === 'zh' ? '案例暂未公开' : 'Project unavailable')} | ${settings.siteName}`
+        description = visible ? contentText(settings, `case.${study.id}.intro`, language) : ''
+        image = settings.content?.images[`case.${study.id}.cover`]?.src || settings.heroImage
+      }
     }
     document.title = title
     upsertMeta('description', description)

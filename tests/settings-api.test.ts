@@ -53,6 +53,81 @@ beforeEach(() => {
 })
 
 describe('Node settings API and public read contract (mock database)', () => {
+  it('round trips independent slides, experience order and two palettes without exposing foreign media', async () => {
+    const content = { heroSlides: [{ id: 'intro', visible: false }, { id: 'creator', caseId: 'creator', visible: true }], experienceItems: [{ id: 'openmoon' }], texts: { 'hero.creator.title': { zh: '独立首页', en: 'Independent hero' }, 'experience.openmoon.role': { zh: '运营', en: 'Operations' } }, images: { 'hero.creator.cover': { src: '', assetId: ownImage, alt: '独立轮播图' } } }
+    const theme = { defaultMode: 'dark', ambientMotion: false, nightAtmosphere: false, nightGlow: '#526bb0', light: { background: '#f4f1ea', section: '#111111', accent: '#315674', glow: '#83acbc' }, dark: { background: '#161616', footer: '#333333', accent: '#8dabc4', glow: '#345e80' } }
+    const res = response()
+    await settingsHandler({ method: 'PUT', body: { ...basic, content, theme } } as any, res)
+    expect(res.code).toBe(200)
+    const result = response(); await publicHandler({ method: 'GET' } as any, result)
+    expect(result.body.settings.content.heroSlides).toEqual(content.heroSlides)
+    expect(result.body.settings.content.experienceItems).toEqual(content.experienceItems)
+    expect(result.body.settings.theme).toMatchObject(theme)
+    expect(result.body.settings.content.images['hero.creator.cover'].src).toContain('storage.example')
+    await settingsHandler({ method: 'PUT', body: { ...basic, theme: { footerColor: '#626a4c' }, content: { texts: {}, images: {} } } } as any, response())
+    expect(tables.site_settings[0].seo.content).toMatchObject(content)
+    expect(tables.site_settings[0].seo.theme.dark).toEqual(theme.dark)
+    expect(tables.site_settings[0].seo.theme.nightAtmosphere).toBe(false)
+    expect(tables.site_settings[0].seo.theme.ambientMotion).toBe(false)
+    expect(tables.site_settings[0].seo.theme.nightGlow).toBe('#526bb0')
+    await settingsHandler({ method: 'PUT', body: { ...basic, theme: { dark: { background: '#060b17' } } } } as any, response())
+    expect(tables.site_settings[0].seo.theme.dark).toEqual({ ...theme.dark, background: '#060b17' })
+    const invalid = response()
+    await settingsHandler({ method: 'PUT', body: { ...basic, content: { ...content, images: { 'hero.creator.cover': { src: '', assetId: otherImage, alt: '' } } } } } as any, invalid)
+    expect(invalid.code).toBe(400)
+    const duplicate = response()
+    await settingsHandler({ method: 'PUT', body: { ...basic, content: { ...content, heroSlides: [content.heroSlides[0], content.heroSlides[0]] } } } as any, duplicate)
+    expect(duplicate.code).toBe(400)
+  })
+  it('round trips custom case groups, validates IDs and preserves their content for legacy editors', async () => {
+    const customCases = [{ id: 'custom-shenzhen', name: '深圳城市企划' }]
+    const content = { customCases, texts: { 'case.custom-shenzhen.title': { zh: '深圳城市企划', en: 'Shenzhen' } }, images: { 'case.custom-shenzhen.cover': { src: '', assetId: ownImage, alt: '自定义封面' } } }
+    const res = response()
+    await settingsHandler({ method: 'PUT', body: { ...basic, content } } as any, res)
+    expect(res.code).toBe(200)
+    const publicRes = response()
+    await publicHandler({ method: 'GET' } as any, publicRes)
+    expect(normalizeSettings(publicRes.body.settings).content?.customCases).toEqual(customCases)
+    expect(publicRes.body.settings.content.images['case.custom-shenzhen.cover'].src).toContain('storage.example')
+    await settingsHandler({ method: 'PUT', body: { ...basic, content: { texts: {}, images: {} } } } as any, response())
+    expect(tables.site_settings[0].seo.content.customCases).toEqual(customCases)
+    expect(tables.site_settings[0].seo.content.texts).toEqual(content.texts)
+    expect(tables.site_settings[0].seo.content.images).toMatchObject(content.images)
+    for (const invalid of [[...customCases, ...customCases], [{ id: '../escape', name: 'Bad path' }], [{ id: 'creator', name: 'Collision' }]]) {
+      const bad = response()
+      await settingsHandler({ method: 'PUT', body: { ...basic, content: { ...content, customCases: invalid } } } as any, bad)
+      expect(bad.code).toBe(400)
+      expect(tables.site_settings[0].seo.content.customCases).toEqual(customCases)
+    }
+  })
+  it('saves site videos by owner-scoped asset ID, renews URLs, and retains them for older clients', async () => {
+    const videoId = 'dcb156bb-0ee4-41c7-a7ef-223456789abc'
+    tables.assets.push({ id: videoId, owner_id: owner, kind: 'video', status: 'ready', storage_path: `${owner}/video.mp4` })
+    const res = response()
+    await settingsHandler({ method: 'PUT', body: { ...basic, content: { texts: {}, images: {}, videos: { 'case.travel.video.0': { src: 'https://old.example/video.mp4', assetId: videoId, alt: '旅居片段' } } } } } as any, res)
+    expect(res.code).toBe(200)
+    expect(tables.site_settings[0].seo.content.videos['case.travel.video.0'].src).toBe('')
+    signVersion = 3
+    const publicRes = response()
+    await publicHandler({ method: 'GET' } as any, publicRes)
+    expect(publicRes.body.settings.content.videos['case.travel.video.0'].src).toContain('?v=3')
+    await settingsHandler({ method: 'PUT', body: { ...basic, content: { texts: {}, images: {} } } } as any, response())
+    expect(tables.site_settings[0].seo.content.videos['case.travel.video.0'].assetId).toBe(videoId)
+    for (const invalidId of [otherImage, ownImage]) {
+      const bad = response()
+      await settingsHandler({ method: 'PUT', body: { ...basic, content: { texts: {}, images: {}, videos: { x: { src: '', assetId: invalidId, alt: '' } } } } } as any, bad)
+      expect(bad.code).toBe(400)
+    }
+    tables.assets.find(asset => asset.id === videoId)!.status = 'uploading'
+    const unsigned = await serializeSettings(tables.site_settings[0], runtime.client)
+    expect(unsigned!.content.videos['case.travel.video.0'].src).toBe('')
+  })
+  it('rejects unsafe case links before persisting', async () => {
+    const res = response()
+    await settingsHandler({ method: 'PUT', body: { ...basic, content: { texts: { 'case.creator.video.0.url': { zh: 'javascript:alert(1)', en: '' } }, images: {} } } } as any, res)
+    expect(res.code).toBe(400)
+    expect(res.body.error).toBe('invalid_case_link')
+  })
   it('persists theme settings through the owner-scoped JSONB write and public read, including older clients', async () => {
     const theme = { footerColor: '#d2c5be', followHero: true }
     const res = response()

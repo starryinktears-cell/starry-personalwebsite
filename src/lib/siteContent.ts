@@ -2,9 +2,11 @@ import type { SiteSettings, SiteImage } from './types'
 import type { Language } from './i18n'
 import { editableTexts } from './siteContentCatalog'
 import { siteSettings as defaults } from './mockData'
+import { caseImageSlots } from '../data/caseCatalog'
 
 export { editableTexts, contentSections, contentPages } from './siteContentCatalog'
 export const imageSlots: Record<string, { label: string; src: string; alt: string }> = {
+  ...caseImageSlots,
   portrait: { label: '首页 / 摄影配图 1', src: '/images/portrait.webp', alt: '肖像摄影' },
   window: { label: '首页 / 摄影配图 2', src: '/images/window.webp', alt: '窗边的光' },
   dusk: { label: '首页 / 影像配图 1', src: '/images/dusk.webp', alt: '暮色' },
@@ -28,7 +30,7 @@ export function contentText(settings: SiteSettings, key: string, language: Langu
 }
 
 export function siteImage(settings: SiteSettings, key: string): SiteImage {
-  return settings.content?.images[key] ?? imageSlots[key]
+  return settings.content?.images[key] ?? imageSlots[key] ?? { src: '/images/field.webp', alt: '待替换的案例配图' }
 }
 
 // Only the bundled media have generated AVIF, thumbnail and blur derivatives.

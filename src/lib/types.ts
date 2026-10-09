@@ -69,12 +69,18 @@ export type SiteSettings = {
   heroAlt?: string
   content?: SiteContent
   accent: string
-  theme?: { footerColor?: string; followHero?: boolean }
+  theme?: { footerColor?: string; followHero?: boolean; defaultMode?: 'light' | 'dark'; light?: ThemePalette; dark?: ThemePalette; nightAtmosphere?: boolean; ambientMotion?: boolean; nightGlow?: string }
   socialLinks: { label: string; href: string }[]
 }
 
 export type SiteImage = { src: string; assetId?: string | null; alt: string }
+export type ThemePalette = { background?: string; surface?: string; section?: string; footer?: string; accent?: string; glow?: string }
+export type HeroSlide = { id: string; caseId?: string; visible: boolean }
 export type SiteContent = {
+  experienceItems?: { id: string }[]
+  heroSlides?: HeroSlide[]
+  customCases?: { id: string; name: string }[]
   texts: Record<string, { en: string; zh: string }>
   images: Record<string, SiteImage>
+  videos?: Record<string, SiteImage>
 }

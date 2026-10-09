@@ -1,5 +1,25 @@
 import type { CSSProperties } from 'react'
-import type { SiteSettings } from './types'
+import type { SiteSettings, ThemePalette } from './types'
+
+export const defaultPalettes = {
+  light: { background: '#f4f1ea', surface: '#ece8df', section: '#e5e9e8', glow: '#91acbc' },
+  dark: { background: '#060b17', surface: '#0d1626', section: '#091426', glow: '#345779' },
+}
+export type ColorMode = 'light' | 'dark'
+export function atmosphereVariables(settings: Pick<SiteSettings, 'theme'>, mode: ColorMode): CSSProperties {
+  const enabled = mode === 'dark' && settings.theme?.nightAtmosphere !== false
+  const glow = settings.theme?.[mode]?.glow ?? (mode === 'dark' ? settings.theme?.nightGlow : undefined) ?? defaultPalettes[mode].glow
+  return { '--atmosphere-image': enabled ? `radial-gradient(ellipse at 12% 15%, rgb(${rgb(glow).join(' ')} / .22), transparent 55%), radial-gradient(ellipse at 88% 65%, rgb(57 45 94 / .16), transparent 55%), radial-gradient(1px 1px at 32px 48px, #d9e7ff88 70%, transparent), radial-gradient(1px 1px at 150px 210px, #dae5ff66 70%, transparent), radial-gradient(.7px .7px at 85px 120px, #c7d8ff55 70%, transparent)` : 'none', '--aurora-rgb': rgb(glow).join(' '), '--aurora-opacity': mode === 'dark' ? (enabled ? '.5' : '0') : '.13' } as CSSProperties
+}
+export function modePalette(settings: Pick<SiteSettings, 'accent' | 'theme'>, mode: ColorMode): Required<ThemePalette> {
+  return { ...defaultPalettes[mode], accent: settings.accent, footer: settings.theme?.footerColor ?? deepColor(settings.accent), ...(mode === 'dark' && settings.theme?.nightGlow ? { glow: settings.theme.nightGlow } : {}), ...settings.theme?.[mode] }
+}
+
+export const pairedPalettes = [
+  { name: '深海极光', light: { background: '#f4f3ee', surface: '#e9eeef', section: '#d9e4e7', footer: '#e1e8e9', accent: '#315674', glow: '#83acbc' }, dark: { background: '#060b17', surface: '#0d1626', section: '#091426', footer: '#071325', accent: '#8dabc4', glow: '#345e80' } },
+  { name: '雾紫极光', light: { background: '#f5f2ef', surface: '#ece7ec', section: '#e5dfeb', footer: '#e5dfe7', accent: '#75647e', glow: '#b29ebe' }, dark: { background: '#100d1a', surface: '#1b1628', section: '#191427', footer: '#120f1f', accent: '#b7a3ca', glow: '#695184' } },
+  { name: '青墨极光', light: { background: '#f2f3ed', surface: '#e6ece7', section: '#dfe7df', footer: '#e1e8e2', accent: '#4b6a61', glow: '#93b5a9' }, dark: { background: '#080f13', surface: '#111e24', section: '#0e1b21', footer: '#0a161b', accent: '#94b7ac', glow: '#386d68' } },
+]
 
 export const originalAccent = '#626a4c'
 export const originalFooter = '#3a3f2d'
@@ -24,11 +44,14 @@ export function readableText(background: string) {
   const lightContrast = 1.05 / (value + .05)
   return darkContrast > lightContrast ? '#1c1d1a' : '#ffffff'
 }
-export function themeVariables(settings: Pick<SiteSettings, 'accent' | 'theme'>): CSSProperties {
-  const accent = /^#[\da-f]{6}$/i.test(settings.accent) ? settings.accent : originalAccent
+export function themeVariables(settings: Pick<SiteSettings, 'accent' | 'theme'>, mode: ColorMode = 'light'): CSSProperties {
+  const chosenAccent = settings.theme?.[mode]?.accent ?? settings.accent
+  const accent = /^#[\da-f]{6}$/i.test(chosenAccent) ? chosenAccent : originalAccent
   const deep = deepColor(accent)
-  const footer = settings.theme?.footerColor && /^#[\da-f]{6}$/i.test(settings.theme.footerColor) ? settings.theme.footerColor : deep
-  return { '--olive': accent, '--olive-rgb': rgb(accent).join(' '), '--olive-deep': deep, '--olive-deep-rgb': rgb(deep).join(' '), '--accent-on': readableText(accent), '--footer-rgb': rgb(footer).join(' '), '--footer-ink-rgb': rgb(readableText(footer)).join(' ') } as CSSProperties
+  const palette = modePalette({ ...settings, accent: /^#[\da-f]{6}$/i.test(settings.accent) ? settings.accent : originalAccent }, mode)
+  const footer = palette.footer
+  const ink = readableText(palette.background)
+  return { '--paper': palette.background, '--paper-2': palette.surface, '--paper-rgb': rgb(palette.background).join(' '), '--paper2-rgb': rgb(palette.surface).join(' '), '--ink': ink, '--ink-rgb': rgb(ink).join(' '), '--ink-muted': `rgb(${rgb(ink).join(' ')} / .72)`, '--line': `rgb(${rgb(ink).join(' ')} / .16)`, '--section-rgb': rgb(palette.section).join(' '), '--section-ink-rgb': rgb(readableText(palette.section)).join(' '), '--olive': accent, '--olive-rgb': rgb(accent).join(' '), '--olive-deep': deep, '--olive-deep-rgb': rgb(deep).join(' '), '--accent-on': readableText(accent), '--footer-rgb': rgb(footer).join(' '), '--footer-ink-rgb': rgb(readableText(footer)).join(' ') } as CSSProperties
 }
 
 /** Pick a dominant color family, then soften it to a muted, medium-value palette. */

@@ -1,5 +1,10 @@
+import { experienceItems, experienceTexts } from '../data/workExperience'
+import type { SiteSettings } from './types'
+import { ensureHeroSlides, heroFields } from './heroSlides'
+import { getCaseDefinitions, caseDefinitions, caseTextDefaults } from '../data/caseCatalog'
 // Defaults preserve the cinematic design. Keys are stable across translations.
 export const editableTexts: Record<string, { en: string; zh: string; group: string }> = {
+  'footer.wordmark': { en: 'Starry Ink', zh: 'Starry Ink', group: '页脚' },
   "home.heroTitle": {"en": "Visual stories for a more conscious tomorrow", "zh": "为更有意识的明天，记录视觉故事", "group": "首页"},
   "home.heroSubtitle": {"en": "Photography / Film / Stories", "zh": "摄影 / 影像 / 故事", "group": "首页"},
   "PublicLayout.8c8738c1": {
@@ -296,23 +301,32 @@ timelineDefaults.forEach(([year, en, zh], index) => {
   addText(`about.timeline.${index}.description`, 'Photography, film and a little more time.', '摄影、影像，以及多一点时间。', '关于')
 })
 
-export const contentPages = ['首页', '关于', '服务', '联系', '全站', '页脚'] as const
+Object.assign(editableTexts, caseTextDefaults, experienceTexts)
+export const contentPages = ['首页', '关于', '服务', '案例', '联系', '全站', '页脚'] as const
 export type ContentPage = typeof contentPages[number]
-export type ContentSection = { page: ContentPage; title: string; fields: { key: string; label: string }[]; images: string[] }
+export type ContentSection = { id?: string; page: ContentPage; title: string; fields: { key: string; label: string }[]; images: string[]; videos?: string[]; caseId?: string; slideId?: string }
 type Section = ContentSection
-export const contentSectionId = (section: ContentSection) => section.fields[0]?.key ?? section.images[0]
+export const contentSectionId = (section: ContentSection) => section.id ?? section.fields[0]?.key ?? section.images[0]
 const fields = (entries: [string, string][]) => entries.map(([key, label]) => ({ key, label }))
 export const contentSections: Section[] = [
+  { page: '案例', title: '案例总览', images: [], fields: fields([['cases.enabled', '显示案例区'], ['cases.heading', '案例区标题'], ['cases.intro', '案例区简介']]) },
+  ...caseDefinitions.flatMap((item): Section[] => [
+    { page: '案例', title: `${item.name} / 内容`, caseId: item.id, images: [`case.${item.id}.cover`], fields: fields([
+      ['visible', '显示此案例'], ['adminName', '后台标签名称'], ['title', '项目标题'], ['kicker', '项目分类'], ['intro', '项目简介'], ['metric', '主指标 / 关键词'], ['metricLabel', '指标含义'], ['note', '补充说明'], ['body', '项目正文'], ['outputs', '内容范围（每行一项）'], ['mediaNote', '配图说明（替换真实素材后可清空）'], ['linkLabel', '项目链接按钮'], ['linkUrl', '项目链接（HTTPS，可留空）'],
+    ].map(([key, label]) => [`case.${item.id}.${key}`, label] as [string, string])) },
+    { page: '案例', title: `${item.name} / 媒体`, caseId: item.id, images: [`case.${item.id}.photo1`, `case.${item.id}.photo2`], videos: [0, 1].map(i => `case.${item.id}.video.${i}`), fields: fields([0, 1].flatMap(i => [[`case.${item.id}.video.${i}.title`, `视频 ${i + 1} 标题`], [`case.${item.id}.video.${i}.url`, `视频 ${i + 1} 外部页面链接（如 B 站）`]] as [string, string][])) },
+  ]),
+  { page: '案例', title: '旅居 / 路线', caseId: 'travel', images: [], fields: fields([0, 1, 2].flatMap(i => [[`case.travel.route.${i}.title`, `站点 ${i + 1} 名称`], [`case.travel.route.${i}.body`, `站点 ${i + 1} 行程与体验`], [`case.travel.route.${i}.url`, `站点 ${i + 1} 路线 / 地图链接（HTTPS）`]] as [string, string][])) },
   { page: '首页', title: '首屏', images: ['hero'], fields: fields([
     ['home.heroTitle', '首屏大标题'], ['home.heroSubtitle', '首屏副标题'], ['HomePage.3e1e9eba', '查看作品按钮'], ['HomePage.a08934e1', '合作按钮'],
     ['home.scene', '左上场记'], ['home.coordinates', '左上坐标'], ['home.exposure', '右下曝光参数'], ['home.frame', '右下帧率与时码'], ['home.scroll', '滚动提示'], ['home.signature', '右下签名'],
   ]) },
   { page: '首页', title: '精选作品', images: [], fields: fields([['HomePage.6d674d76', '区块标识'], ['HomePage.b23b30be', '区块标题']]) },
   { page: '首页', title: '能力区简介', images: [], fields: fields([['HomePage.2fbbf645', '区块标识'], ['HomePage.781240d4', '左侧简介']]) },
-  ...[['portrait', 'window'], ['dusk', 'mountainLake'], ['olive', 'studio'], ['forest', 'shore']].map((images, index): Section => ({ page: '首页', title: `能力 ${index + 1} / ${editableTexts[`home.capability.${index}.title`].zh}`, images, fields: fields([[`home.capability.${index}.title`, '能力标题'], [`home.capability.${index}.description`, '能力说明']]) })),
+  ...[['portrait', 'window'], ['dusk', 'mountainLake'], ['olive', 'studio'], ['forest', 'shore']].map((images, index): Section => ({ page: '首页', title: `能力${['一', '二', '三', '四'][index]}`, images, fields: fields([[`home.capability.${index}.title`, '能力标题'], [`home.capability.${index}.description`, '能力说明']]) })),
   { page: '首页', title: '宣言与统计', images: [], fields: fields([['HomePage.babb7af4', '区块标识'], ['HomePage.3daa76c6', '宣言'], ...[0, 1, 2].flatMap(index => [[`home.stat.${index}.value`, `统计 ${index + 1} 数值`], [`home.stat.${index}.label`, `统计 ${index + 1} 名称`]] as [string, string][])]) },
   { page: '关于', title: '人物介绍', images: ['about'], fields: fields([['AboutPage.491a3827', '区块标识'], ['AboutPage.4012d26e', '页面大标题'], ['AboutPage.d9b21b8c', '介绍副标题'], ['AboutPage.92bac68a', '人物简介'], ['AboutPage.9bbb81cf', '地点与合作状态']]) },
-  { page: '关于', title: '时间线与引言', images: [], fields: fields([['AboutPage.47c6b96c', '时间线标题'], ...[0, 1, 2, 3].flatMap(index => [[`about.timeline.${index}.year`, `经历 ${index + 1} 年份`], [`about.timeline.${index}.title`, `经历 ${index + 1} 标题`], [`about.timeline.${index}.description`, `经历 ${index + 1} 说明`]] as [string, string][]), ['AboutPage.8fe18a3b', '页末引言']]) },
+  { page: '关于', title: '项目阶段与引言', images: [], fields: fields([['AboutPage.47c6b96c', '时间线标题'], ...[0, 1, 2, 3].flatMap(index => [[`about.timeline.${index}.year`, `经历 ${index + 1} 阶段 / 年份`], [`about.timeline.${index}.title`, `经历 ${index + 1} 标题`], [`about.timeline.${index}.description`, `经历 ${index + 1} 说明`]] as [string, string][]), ['AboutPage.8fe18a3b', '页末引言']]) },
   { page: '服务', title: '服务页介绍', images: ['serviceA', 'serviceB'], fields: fields([['ServicesPage.f66a82e4', '区块标识'], ['ServicesPage.72318c38', '页面大标题'], ['ServicesPage.c4a681de', '页面简介']]) },
   ...[0, 1, 2, 3].map((index): Section => ({ page: '服务', title: `服务 ${index + 1} / ${serviceDefaults[index][1]}`, images: [], fields: fields([[`services.item.${index}.title`, '服务标题'], [`services.item.${index}.description`, '服务说明'], [`services.item.${index}.deliverables`, '交付清单（每行一项）']]) })),
   { page: '服务', title: '合作流程', images: [], fields: fields([['ServicesPage.b2bb0035', '流程区块标题'], ...[0, 1, 2, 3].flatMap(index => [[`services.process.${index}.title`, `步骤 ${index + 1} 标题`], [`services.process.${index}.description`, `步骤 ${index + 1} 说明`]] as [string, string][]), ['ServicesPage.a08934e1', '合作按钮']]) },
@@ -320,12 +334,50 @@ export const contentSections: Section[] = [
   { page: '联系', title: '联系页配图', fields: [], images: ['contact'] },
   { page: '联系', title: '地点与时间', fields: fields([['contact.timeLabel', '时间与坐标标题'], ['contact.city', '城市 / 地址'], ['contact.coordinates', '展示坐标'], ['site.clockOffset', '全站时钟 UTC 时差（如 +08:00）'], ['contact.timeZoneLabel', '时区文字'], ['contact.directLabel', '直接联系标题'], ['contact.followLabel', '社交链接标题']]), images: [] },
   { page: '全站', title: '导航状态', fields: fields([['site.nav.work', '作品导航'], ['site.nav.about', '关于导航'], ['site.nav.services', '服务导航'], ['site.nav.contact', '联系导航'], ['PublicLayout.8c8738c1', '合作状态'], ['site.clockCity', '时钟城市名称'], ['site.clockZone', '时钟旁标签']]), images: [] },
-  { page: '页脚', title: '页脚文字', fields: fields([['Footer.ab353dfd', '联系按钮'], ['Footer.48f0c1a7', '返回顶部按钮'], ['Footer.e7ef3aca', '地点标识'], ['site.location', '地点'], ['Footer.0137b9ad', '社交标识'], ['Footer.fc8e4190', '版权说明'], ['Footer.2f158034', '隐私链接'], ['site.marquee', '滚动文字']]), images: [] },
+  { page: '页脚', title: '页脚文字', fields: fields([['Footer.ab353dfd', '联系按钮'], ['Footer.48f0c1a7', '返回顶部按钮'], ['Footer.e7ef3aca', '地点标识'], ['site.location', '地点'], ['Footer.0137b9ad', '社交标识'], ['Footer.fc8e4190', '版权说明'], ['Footer.2f158034', '隐私链接'], ['site.marquee', '滚动文字'], ['footer.wordmark', '页尾互动大字']]), images: [] },
 ]
 
 // Keep the earlier generic fields available for existing users and saved keys.
 for (const page of contentPages) {
   const used = new Set(contentSections.flatMap(section => section.fields.map(field => field.key)))
-  const remaining = Object.entries(editableTexts).filter(([key, value]) => value.group === page && !used.has(key))
+  const remaining = Object.entries(editableTexts).filter(([key, value]) => value.group === page && !used.has(key) && !key.startsWith('experience.'))
   if (remaining.length) contentSections.push({ page, title: '其他兼容文案', images: [], fields: remaining.map(([key, value]) => ({ key, label: value.zh })) })
+}
+
+
+export function getContentSections(settings: SiteSettings): ContentSection[] {
+  const custom = (settings.content?.customCases ?? []).flatMap(item =>
+    contentSections.filter(section => section.caseId === 'creator').map(section => ({
+      ...section, caseId: item.id, title: section.title.replace(caseDefinitions[0].name, item.name),
+      fields: section.fields.map(field => ({ ...field, key: field.key.replace('case.creator.', `case.${item.id}.`) })),
+      images: section.images.map(key => key.replace('case.creator.', `case.${item.id}.`)),
+      videos: section.videos?.map(key => key.replace('case.creator.', `case.${item.id}.`)),
+    })))
+  const slides = ensureHeroSlides(settings).content!.heroSlides!
+  const heroSections: ContentSection[] = slides.map((slide, index) => slide.id === 'intro'
+    ? { ...contentSections.find(section => section.title === '首屏')!, slideId: 'intro', title: `第 ${index + 1} 屏` }
+    : { id: `hero.${slide.id}`, page: '首页', slideId: slide.id, title: `第 ${index + 1} 屏`, images: [`hero.${slide.id}.cover`], fields: heroFields.map(([key, label]) => ({ key: `hero.${slide.id}.${key}`, label })) })
+  const sections: ContentSection[] = [...contentSections.filter(section => section.title !== '首屏'), ...heroSections, ...custom, { id: 'socialLinks', page: '页脚', title: '社交平台', images: [], fields: [] }]
+  // Keep the hero as the first homepage module regardless of slide order.
+  sections.splice(sections.findIndex(section => section.page === '首页'), 0, { id: 'hero.overview', page: '首页', title: '轮播管理', images: [], fields: [] })
+  sections.push({ id: 'experience.heading', page: '关于', title: '工作经历总览', images: [], fields: [{ key: 'experience.heading', label: '时间轴标题' }] })
+  sections.push(...experienceItems(settings).map((item, index): ContentSection => ({ id: `experience.${item.id}`, page: '关于', title: `经历 ${index + 1}`, images: [], fields: [['visible', '显示这段经历'], ['date', '起止时间'], ['company', '公司 / 项目'], ['role', '职位 / 职责'], ['description', '经历说明']].map(([key, label]) => ({ key: `experience.${item.id}.${key}`, label })) })))
+  return sections.map(section => {
+    if (!section.caseId) return section
+    const original = [...caseDefinitions, ...(settings.content?.customCases ?? [])].find(item => item.id === section.caseId)?.name
+    const name = settings.content?.texts[`case.${section.caseId}.adminName`]?.zh.trim()
+    if (!name || name === original) return section
+    return { ...section, title: `${name} / ${section.videos ? '媒体' : contentSectionId(section).includes('.route.') ? '路线' : '内容'}` }
+  })
+}
+
+export function sectionGroup(section: ContentSection, settings: SiteSettings) {
+  const id = contentSectionId(section)
+  if (id.startsWith('experience.')) return { id: 'experience', label: '工作经历', child: section.title }
+  if (section.slideId || id === 'hero.overview') return { id: 'hero', label: '首屏', child: section.title }
+  if (section.caseId) return { id: `case.${section.caseId}`, label: getCaseDefinitions(settings).find(item => item.id === section.caseId)?.name ?? section.caseId, child: section.videos ? '媒体' : id.includes('.route.') ? '路线' : '内容' }
+  if (id === 'HomePage.2fbbf645' || id.startsWith('home.capability.')) return { id: 'capabilities', label: '能力区', child: id === 'HomePage.2fbbf645' ? '简介' : section.title }
+  const service = id.match(/^services\.item\.(\d+)\.title$/)
+  if (service) return { id, label: `服务 ${Number(service[1]) + 1} / ${settings.content?.texts[id]?.zh ?? editableTexts[id].zh}`, child: section.title }
+  return { id, label: section.title, child: section.title }
 }
