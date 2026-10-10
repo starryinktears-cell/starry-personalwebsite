@@ -1,4 +1,4 @@
-import type { SiteSettings } from '../lib/types'
+import type { SiteSettings } from '../lib/types.js'
 
 export const caseDefinitions = [
   { id: 'creator', name: '自媒体 / B 站', image: 'portrait', title: ['个人 IP 与内容运营', 'Personal IP & content'], kicker: ['内容策划 / 社媒运营', 'CONTENT / SOCIAL'], intro: ['从内容定位到发布复盘，持续构建个人表达与观众连接。', 'Building a personal voice and audience connection, from positioning to publishing and review.'], metric: ['7 万', '70K'], metricLabel: ['B 站关注者', 'BILIBILI FOLLOWERS'], note: ['历史最高 8.3 万 · 单条视频最高播放 461 万', 'Peak 83K followers · Top video 4.61M views'], body: ['从选题、脚本、拍摄剪辑到封面、发布与互动，围绕鲜明的内容风格持续运营。将受众兴趣与商业需求结合，推进品牌合作内容。', 'A connected workflow of ideas, scripts, filming, editing, covers, publishing and engagement. Distinctive content shaped around audience interests and brand collaborations.'], outputs: ['账号定位与内容系列\n视频脚本、摄影与剪辑\n商业合作内容与互动运营', 'Channel positioning & content series\nScripts, photography & editing\nBrand collaborations & engagement'] },
