@@ -67,11 +67,11 @@ npm run verify
 
 ## Vercel / GitHub
 
-将仓库导入 Vercel，Framework 选择 Vite，Build Command 使用 `npm run build`，Output Directory 使用 `dist`。在 Preview 和 Production 分别配置 Supabase URL、publishable key、service role key、`MEDIA_BUCKET` 和 `VITE_SITE_URL`。GitHub 的 Pull Request 会触发 Vercel Preview，`.github/workflows/ci.yml` 会执行类型检查、Lint、Vitest 和生产构建。改版阶段只在 `redesign/cinematic` 分支本地验证，不自动推送主分支或触发 Production 部署。
+将仓库导入 Vercel，Framework 选择 Vite，Build Command 使用 `npm run build`，Output Directory 使用 `dist`。在 Preview 和 Production 分别配置 Supabase URL、publishable key、service role key、`MEDIA_BUCKET` 和 `VITE_SITE_URL`。GitHub 的 Pull Request 会触发 Vercel Preview，`.github/workflows/ci.yml` 会执行类型检查、Lint、Vitest 和生产构建。视频转码在同一函数实例内以后台任务运行，请在 Vercel 项目设置中确认已启用 Fluid compute，并保持 `functions["api/upload/complete.ts"].maxDuration` 在当前套餐允许范围内（Hobby 最长 300 秒，Pro 最高 800 秒）。改版阶段只在 `redesign/cinematic` 分支本地验证，不自动推送主分支或触发 Production 部署。
 
 ## 当前边界
 
-- 媒体上传会写入私有 Storage，并通过 Tus 分块上传、`retryDelays` 与 fingerprint 恢复断点；`upload_tasks` 记录上传中、可用和失败状态。真实缩略图、视频转码和海报帧仍需要接入异步媒体处理服务后写回 `assets` / `upload_tasks`，当前失败可重新选择文件上传。
+- 媒体上传会写入私有 Storage，并通过 Tus 分块上传、`retryDelays` 与 fingerprint 恢复断点；`upload_tasks` 记录上传中、处理中、可用和失败状态。视频上传完成后，`/api/upload/complete` 在 Vercel Function 内以后台任务（`waitUntil` + `ffmpeg-static`）异步处理：下载原片、生成最长边 1280 的 H.264/AAC MP4（faststart）、封面帧 JPG 和宽高/时长元数据，写回 `assets` / `upload_tasks` 后用转码文件替换原片；前端轮询直到处理完成。处理失败会记录 `processing_error` 并标记失败，删除后重新选择文件上传即可。函数时长在 `vercel.json` 配置（默认 300 秒，Hobby 上限；Pro 可调高），并把 `node_modules/ffmpeg-static/**` 显式打进函数包；可用 `FFMPEG_BIN` 环境变量覆盖二进制路径。
 - 本地演示媒体保存到浏览器 IndexedDB，支持单文件 5 MB 以内的文件，不再受原来的 2 MB 限制。localStorage 仅保存媒体引用和内容元数据，刷新后会重新读取文件；原有 data URL 图片仍兼容。文件只在当前浏览器和同一来源中可用，清除站点存储会移除本地媒体，不会写入生产 Supabase。真实环境通过 `/api/upload/sign` 创建上传任务，并以 owner_id + 文件信息保存不含凭证的任务引用，重新选择同一文件可恢复 Tus 断点。
 - 真实邮件找回密码由 Supabase Auth 模板发送；未配置邮件服务时，登录页面只展示入口，不伪造成功结果。
 

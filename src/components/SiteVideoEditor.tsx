@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Asset, SiteImage } from '../lib/types'
-import { demoMode } from '../lib/portfolioApi'
+import { demoMode, waitForAssetReady } from '../lib/portfolioApi'
 import { uploadMedia } from '../lib/uploadMedia'
 import { maxMediaBytes } from '../lib/validation'
 
@@ -14,7 +14,13 @@ export function SiteVideoEditor({ slot, index, value, assets, disabled, onChange
     setBusy(true); onBusy(true); setProgress(0); setMessage(''); setRetry(file)
     try {
       if (!file.type.startsWith('video/')) throw new Error('请选择 MP4 或 MOV 视频。')
-      const asset = await uploadMedia(file, setProgress)
+      const uploaded = await uploadMedia(file, setProgress)
+      let asset = uploaded
+      if (uploaded.status === 'processing') {
+        setMessage('视频已上传，正在后台转码并生成封面帧…')
+        asset = await waitForAssetReady(uploaded.id)
+      }
+      if (asset.status !== 'ready') throw new Error(asset.error ? `视频处理失败：${asset.error}` : '视频处理失败，请重新上传。')
       onAsset(asset); select(asset); setRetry(null); setMessage('视频已选中，保存修改后生效。')
     } catch (error) { setMessage(error instanceof Error ? error.message : '上传失败') }
     finally { setBusy(false); onBusy(false) }

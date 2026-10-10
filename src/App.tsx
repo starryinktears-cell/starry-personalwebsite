@@ -10,7 +10,7 @@ import type { Asset, Inquiry, Project, SiteSettings } from './lib/types'
 import { inquiries as seedInquiries, projects as seedProjects, siteSettings as seedSettings } from './lib/mockData'
 import { isAllowedMedia, maxMediaBytes, validateProjectForPublish } from './lib/validation'
 import { sendPasswordReset, signInWithSupabase, signOutSupabase } from './lib/supabase'
-import { apiRequest, demoMode, loadMediaLibrary, loadAdminData, loadPublicData, saveProject, saveSettings, submitInquiry, updateInquiry } from './lib/portfolioApi'
+import { apiRequest, demoMode, loadMediaLibrary, loadAdminData, loadPublicData, saveProject, saveSettings, submitInquiry, updateInquiry, waitForAssetReady } from './lib/portfolioApi'
 import { supabase } from './lib/supabase'
 import { copy, LANGUAGE_STORAGE_KEY, languageLabel, type Language } from './lib/i18n'
 import { RouteMeta } from './lib/seo'
@@ -58,7 +58,7 @@ function categoryLabel(language: Language, category: string) {
 }
 
 function statusLabel(language: Language, status: string) {
-  const labels: Record<string, [string, string]> = { published: ['Published', '已发布'], draft: ['Draft', '草稿'], archived: ['Archived', '已下线'], processing: ['Processing', '处理中'], ready: ['Ready', '可用'], unread: ['Unread', '未读'], read: ['Read', '已读'] }
+  const labels: Record<string, [string, string]> = { published: ['Published', '已发布'], draft: ['Draft', '草稿'], archived: ['Archived', '已下线'], uploading: ['Uploading', '上传中'], processing: ['Processing', '处理中'], ready: ['Ready', '可用'], failed: ['Failed', '失败'], unread: ['Unread', '未读'], read: ['Read', '已读'] }
   const pair = labels[status]
   return pair ? copy(language, pair[0], pair[1]) : status
 }
@@ -359,7 +359,20 @@ function FixedProjectEditor({ projects, setProjects }: { projects: Project[]; se
     setProject(current => ({ ...current, assets: retryId ? current.assets.map(asset => asset.id === retryId ? localAsset : asset) : [...current.assets, localAsset], cover: current.cover || src, coverAssetId: current.coverAssetId || assetId }))
     try {
       const saved = await uploadMedia(file, percent => setProgress(current => ({ ...current, [assetId]: percent })))
-      setProject(current => ({ ...current, assets: current.assets.map(asset => asset.id === assetId ? saved : asset), cover: current.coverAssetId === assetId ? saved.src : current.cover, coverAssetId: current.coverAssetId === assetId ? saved.id : current.coverAssetId, coverAlt: current.coverAssetId === assetId ? current.coverAlt || saved.alt : current.coverAlt }))
+      // Keep the local blob preview while the background transcode replaces the source object.
+      const preview = saved.status === 'processing' ? { ...saved, src } : saved
+      setProject(current => ({ ...current, assets: current.assets.map(asset => asset.id === assetId ? preview : asset), cover: current.coverAssetId === assetId ? preview.src : current.cover, coverAssetId: current.coverAssetId === assetId ? saved.id : current.coverAssetId, coverAlt: current.coverAssetId === assetId ? current.coverAlt || saved.alt : current.coverAlt }))
+      if (saved.status === 'processing') {
+        setMessage(copy(language, 'Video uploaded. Transcoding and poster generation run in the background…', '视频已上传，正在后台转码并生成封面帧…'))
+        try {
+          const ready = await waitForAssetReady(assetId)
+          setProject(current => ({ ...current, assets: current.assets.map(asset => asset.id === assetId ? ready : asset), cover: current.coverAssetId === assetId ? ready.src : current.cover, coverAlt: current.coverAssetId === assetId && !current.coverAlt ? ready.alt : current.coverAlt }))
+          setMessage(copy(language, 'Video is ready.', '视频处理完成，可以使用。'))
+        } catch (error) {
+          updateAsset(assetId, { status: 'failed', error: error instanceof Error ? error.message : 'Processing timeout' })
+          setMessage(error instanceof Error ? error.message : String(error))
+        }
+      }
     } catch (error) { updateAsset(assetId, { status: 'failed', error: error instanceof Error ? error.message : 'Upload failed' }); setMessage(String(error)) }
   }
   const moveAsset = (index: number, direction: number) => setProject(current => {

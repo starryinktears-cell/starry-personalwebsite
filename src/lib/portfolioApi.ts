@@ -179,6 +179,17 @@ export async function loadMediaLibrary(): Promise<Asset[]> {
   return payload.assets.map(normalizeAsset)
 }
 
+export async function waitForAssetReady(assetId: string, options: { intervalMs?: number; timeoutMs?: number; load?: () => Promise<Asset[]> } = {}): Promise<Asset> {
+  const { intervalMs = 3000, timeoutMs = 240000, load = loadMediaLibrary } = options
+  const deadline = Date.now() + timeoutMs
+  for (;;) {
+    if (Date.now() >= deadline) throw new Error('媒体处理超时，请稍后在媒体库中查看结果。')
+    await new Promise((resolve) => setTimeout(resolve, intervalMs))
+    const asset = (await load()).find((item) => item.id === assetId)
+    if (asset && asset.status !== 'processing' && asset.status !== 'uploading' && asset.status !== 'uploaded') return asset
+  }
+}
+
 export async function updateInquiry(id: string, patch: { status?: Inquiry['status']; note?: string }) {
   if (demoMode) { const next = readDemo('inquiries', seedInquiries).map((item) => item.id === id ? { ...item, ...patch } : item); writeDemo('inquiries', next); return next.find((item) => item.id === id)! }
   const response = await apiRequest<{ inquiry: any }>('/api/admin/inquiries', { method: 'PATCH', body: JSON.stringify({ id, status: patch.status, private_note: patch.note }) })

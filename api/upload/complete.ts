@@ -1,6 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { waitUntil } from '@vercel/functions'
 import { z } from 'zod'
 import { authenticateRequest, json } from '../_lib/supabase.js'
+import { processVideoAsset } from '../_lib/transcode.js'
 
 const schema = z.object({ taskId: z.string().uuid(), assetId: z.string().uuid(), status: z.enum(['ready', 'failed', 'cancelled']).default('ready'), alt: z.string().max(500).optional(), error: z.string().max(1000).optional() })
 
@@ -21,9 +23,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { data: objects, error: listError } = await auth.supabase.storage.from(bucket).list(folder, { search: name, limit: 10 })
     if (listError || !(objects ?? []).some((object) => object.name === name)) status = 'failed'
   }
-  const assetUpdate = { status, ...(parsed.data.alt !== undefined ? { alt_text: parsed.data.alt } : {}), ...(parsed.data.error ? { processing_error: parsed.data.error } : {}) }
+  // Videos keep the original object until the background transcode replaces it with a web ready MP4 and poster frame.
+  const transcode = status === 'ready' && asset.kind === 'video'
+  const assetUpdate = { status: transcode ? 'processing' : status, ...(parsed.data.alt !== undefined ? { alt_text: parsed.data.alt } : {}), ...(parsed.data.error ? { processing_error: parsed.data.error } : {}) }
   const { data: updated, error: assetError } = await auth.supabase.from('assets').update(assetUpdate).eq('id', asset.id).eq('owner_id', auth.user.id).select('*').single()
-  await auth.supabase.from('upload_tasks').update({ status, bytes_uploaded: status === 'ready' ? task.bytes_total : 0, error: status === 'failed' ? (parsed.data.error ?? 'Object was not found after upload') : null }).eq('id', task.id).eq('owner_id', auth.user.id)
+  await auth.supabase.from('upload_tasks').update({ status: transcode ? 'processing' : status, bytes_uploaded: status === 'ready' ? task.bytes_total : 0, error: status === 'failed' ? (parsed.data.error ?? 'Object was not found after upload') : null }).eq('id', task.id).eq('owner_id', auth.user.id)
   if (assetError || !updated) return json(res, 500, { error: 'asset_update_failed' })
+  if (transcode) {
+    const bucket = process.env.MEDIA_BUCKET ?? 'portfolio-media'
+    waitUntil(processVideoAsset({ client: auth.supabase, bucket, asset: { id: asset.id, storage_path: asset.storage_path }, task: { id: task.id, bytes_total: task.bytes_total } }))
+    return json(res, 200, { ok: true, status: 'processing', asset: updated })
+  }
   return json(res, status === 'failed' ? 422 : 200, { ok: status !== 'failed', status, asset: updated })
 }

@@ -38,7 +38,13 @@ export async function uploadMedia(file: File, onProgress: (percent: number) => v
     })
     upload.findPreviousUploads().then(previous => { if (previous.length) upload.resumeFromPreviousUpload(previous[0]); upload.start() }).catch(reject)
   })
-  const completed = await apiRequest<{ asset: unknown }>('/api/upload/complete', { method: 'POST', body: JSON.stringify({ taskId: signature.taskId, assetId: signature.assetId, status: 'ready', alt }) })
+  const completed = await apiRequest<{ asset: Record<string, unknown> }>('/api/upload/complete', { method: 'POST', body: JSON.stringify({ taskId: signature.taskId, assetId: signature.assetId, status: 'ready', alt }) })
+  // Videos are transcoded in the background: no signed URL yet, the source object is replaced when processing finishes.
+  if (completed.asset?.status === 'processing') {
+    onProgress(100)
+    localStorage.removeItem(taskKey)
+    return normalizeAsset({ ...completed.asset, src: '' })
+  }
   const url = await supabase.storage.from(signature.bucket).createSignedUrl(signature.path, 3600)
   if (url.error || !url.data) throw new Error(url.error?.message ?? '图片读取失败')
   onProgress(100)
